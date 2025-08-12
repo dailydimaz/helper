@@ -6,8 +6,7 @@ vi.mock("@/lib/env", () => ({
     POSTGRES_URL: inject("TEST_DATABASE_URL"),
     PROXY_SECRET_KEY: "test-secret-key",
     PROXY_URL: "https://proxy.helperai.com",
-    AUTH_URL: "https://helper.ai",
-    NEXT_PUBLIC_SUPABASE_URL: "https://supabase.helperai.dev",
+    NEXT_PUBLIC_APP_URL: "https://helper.ai",
   },
 }));
 
@@ -118,14 +117,12 @@ describe("proxyExternalContent", () => {
     const htmlWithExcludedUrls = `
       <img src="https://helper.ai/logo.png">
       <img src="https://proxy.helperai.com/existing-proxy.png">
-      <img src="https://supabase.helperai.dev/bucket/image.jpg">
     `;
 
     const result = await proxyExternalContent(htmlWithExcludedUrls);
 
     expect(result).toContain('src="https://helper.ai/logo.png"');
     expect(result).toContain('src="https://proxy.helperai.com/existing-proxy.png"');
-    expect(result).toContain('src="https://supabase.helperai.dev/bucket/image.jpg"');
   });
 
   it("does not proxy non-URL attributes", async () => {

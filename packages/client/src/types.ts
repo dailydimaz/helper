@@ -123,8 +123,8 @@ export type SessionParams = z.infer<typeof sessionParamsSchema>;
 
 export type CreateSessionResult = {
   token: string;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
+  supabaseUrl: string; // Legacy field - kept for compatibility
+  supabaseAnonKey: string; // Legacy field - kept for compatibility
 };
 
 export const createConversationBodySchema = z.object({

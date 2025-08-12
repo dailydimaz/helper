@@ -1,0 +1,362 @@
+{
+  "timestamp": "2025-08-12T09:08:46.955Z",
+  "summary": {
+    "total": 34,
+    "passed": 30,
+    "failed": 4,
+    "categories": {
+      "Health Checks": {
+        "total": 2,
+        "passed": 0,
+        "failed": 2
+      },
+      "Authentication Flow": {
+        "total": 5,
+        "passed": 4,
+        "failed": 1
+      },
+      "Database Operations": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0
+      },
+      "File Operations": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0
+      },
+      "Job System": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0
+      },
+      "API Endpoints": {
+        "total": 5,
+        "passed": 4,
+        "failed": 1
+      },
+      "SWR Integration": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0
+      }
+    }
+  },
+  "successRate": 88,
+  "results": [
+    {
+      "category": "Health Checks",
+      "name": "Health endpoint accessible",
+      "passed": false,
+      "timestamp": "2025-08-12T09:08:46.581Z",
+      "details": {}
+    },
+    {
+      "category": "Health Checks",
+      "name": "Basic health endpoint",
+      "passed": false,
+      "timestamp": "2025-08-12T09:08:46.597Z",
+      "details": {}
+    },
+    {
+      "category": "Authentication Flow",
+      "name": "/api/auth/login endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.614Z",
+      "details": {
+        "status": 400,
+        "message": "Bad Request"
+      }
+    },
+    {
+      "category": "Authentication Flow",
+      "name": "/api/auth/register endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.631Z",
+      "details": {
+        "status": 400,
+        "message": "Bad Request"
+      }
+    },
+    {
+      "category": "Authentication Flow",
+      "name": "/api/auth/logout endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.643Z",
+      "details": {
+        "status": 400,
+        "message": "Bad Request"
+      }
+    },
+    {
+      "category": "Authentication Flow",
+      "name": "/api/auth/me endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.660Z",
+      "details": {
+        "status": 400,
+        "message": "Bad Request"
+      }
+    },
+    {
+      "category": "Authentication Flow",
+      "name": "Protected routes require authentication",
+      "passed": false,
+      "timestamp": "2025-08-12T09:08:46.675Z",
+      "details": {
+        "status": 400,
+        "message": "Bad Request"
+      }
+    },
+    {
+      "category": "Database Operations",
+      "name": "Conversations schema exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.693Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/adm/conversations"
+      }
+    },
+    {
+      "category": "Database Operations",
+      "name": "Users schema exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.712Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/adm/users"
+      }
+    },
+    {
+      "category": "Database Operations",
+      "name": "Saved Replies schema exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.731Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/adm/saved-replies"
+      }
+    },
+    {
+      "category": "Database Operations",
+      "name": "Messages schema exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.747Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/messages"
+      }
+    },
+    {
+      "category": "Database Operations",
+      "name": "Pagination parameters handled",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.768Z",
+      "details": {
+        "status": 400
+      }
+    },
+    {
+      "category": "File Operations",
+      "name": "/api/files/initiate-upload endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.784Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/files/initiate-upload"
+      }
+    },
+    {
+      "category": "File Operations",
+      "name": "/api/files/upload endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.803Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/files/upload"
+      }
+    },
+    {
+      "category": "File Operations",
+      "name": "/api/files/url endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.820Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/files/url"
+      }
+    },
+    {
+      "category": "File Operations",
+      "name": "File storage directories exist",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.820Z",
+      "details": {}
+    },
+    {
+      "category": "Job System",
+      "name": "/api/jobs endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.837Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/jobs"
+      }
+    },
+    {
+      "category": "Job System",
+      "name": "/api/jobs/stats endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.853Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/jobs/stats"
+      }
+    },
+    {
+      "category": "Job System",
+      "name": "/api/jobs/dashboard endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.870Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/jobs/dashboard"
+      }
+    },
+    {
+      "category": "Job System",
+      "name": "/api/job endpoint exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.883Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/job"
+      }
+    },
+    {
+      "category": "Job System",
+      "name": "Lightweight job system directory exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.883Z",
+      "details": {}
+    },
+    {
+      "category": "Job System",
+      "name": "Job file ./jobs/lightweight/index.ts exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.884Z",
+      "details": {}
+    },
+    {
+      "category": "Job System",
+      "name": "Job file ./jobs/lightweight/emailProcessing.ts exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.884Z",
+      "details": {}
+    },
+    {
+      "category": "Job System",
+      "name": "Job file ./jobs/lightweight/notifications.ts exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.884Z",
+      "details": {}
+    },
+    {
+      "category": "API Endpoints",
+      "name": "Mailbox API accessible",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.896Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/mailbox"
+      }
+    },
+    {
+      "category": "API Endpoints",
+      "name": "Conversations API accessible",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.914Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/conversations"
+      }
+    },
+    {
+      "category": "API Endpoints",
+      "name": "Members API accessible",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.929Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/members"
+      }
+    },
+    {
+      "category": "API Endpoints",
+      "name": "Saved Replies API accessible",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.940Z",
+      "details": {
+        "status": 400,
+        "endpoint": "/api/saved-replies"
+      }
+    },
+    {
+      "category": "API Endpoints",
+      "name": "Handles 404 errors properly",
+      "passed": false,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    },
+    {
+      "category": "SWR Integration",
+      "name": "SWR hook ./hooks/use-api.tsx exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    },
+    {
+      "category": "SWR Integration",
+      "name": "SWR hook ./hooks/use-user.ts exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    },
+    {
+      "category": "SWR Integration",
+      "name": "SWR hook ./hooks/use-conversations.tsx exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    },
+    {
+      "category": "SWR Integration",
+      "name": "SWR hook ./hooks/use-mailbox.tsx exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    },
+    {
+      "category": "SWR Integration",
+      "name": "SWR provider component exists",
+      "passed": true,
+      "timestamp": "2025-08-12T09:08:46.955Z",
+      "details": {}
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Health",
+      "issue": "System health checks failing",
+      "action": "Check database connection, environment variables, and filesystem permissions"
+    },
+    {
+      "priority": "HIGH",
+      "category": "Authentication",
+      "issue": "Authentication system issues detected",
+      "action": "Verify JWT configuration and authentication API endpoints"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { GenerateTextResult } from "ai";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { aiUsageEvents } from "@/db/schema/aiUsageEvents";
+import { aiUsageEventsTable } from "@/db/schema/aiUsageEvents";
 import { mailboxes } from "@/db/schema/mailboxes";
 import { getMailbox } from "@/lib/data/mailbox";
 
@@ -24,7 +24,7 @@ export const trackAIUsageEvent = async ({
 }: {
   mailbox?: typeof mailboxes.$inferSelect;
   model: keyof typeof MODEL_TOKEN_COST;
-  queryType: (typeof aiUsageEvents.$inferSelect)["queryType"];
+  queryType: (typeof aiUsageEventsTable.$inferSelect)["queryType"];
   usage: GenerateTextResult<any, any>["usage"] & { cachedTokens: number };
 }) => {
   const inputTokensCount = usage.promptTokens;
@@ -39,7 +39,7 @@ export const trackAIUsageEvent = async ({
   const outputCost = outputTokensCount * modelCosts.output;
   const totalCost = cachedInputCost + inputCost + outputCost;
 
-  await db.insert(aiUsageEvents).values({
+  await db.insert(aiUsageEventsTable).values({
     modelName: model,
     queryType,
     inputTokensCount,

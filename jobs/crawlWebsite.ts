@@ -21,7 +21,7 @@ export const crawlWebsite = async ({ websiteId, crawlId }: { websiteId: number; 
 
   try {
     const crawlIdentifier = crypto.randomUUID();
-    const webhookUrl = new URL("/api/webhooks/firecrawl", env.AUTH_URL);
+    const webhookUrl = new URL("/api/webhooks/firecrawl", env.NEXT_PUBLIC_APP_URL);
     webhookUrl.searchParams.set("identifier", crawlIdentifier);
 
     await db

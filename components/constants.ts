@@ -6,7 +6,7 @@ export const DEFAULT_CONVERSATIONS_PER_PAGE = 25;
 
 export const getBaseUrl = () => {
   if (typeof window !== "undefined") return window.location.origin;
-  return env.AUTH_URL;
+  return env.NEXT_PUBLIC_APP_URL;
 };
 
 export const getMarketingSiteUrl = () => {

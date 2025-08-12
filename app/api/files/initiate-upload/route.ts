@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { validateFile } from "@/lib/files/validation";
 import { generateSecureFileKey, createTempDownloadToken } from "@/lib/files/security";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {

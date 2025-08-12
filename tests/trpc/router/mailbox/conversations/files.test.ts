@@ -2,38 +2,15 @@ import { conversationFactory } from "@tests/support/factories/conversations";
 import { userFactory } from "@tests/support/factories/users";
 import { createTestTRPCContext } from "@tests/support/trpcUtils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAdminClient } from "@/lib/supabase/server";
 import { createCaller } from "@/trpc";
 
-vi.mock("@/lib/supabase/server", () => ({
-  createAdminClient: vi.fn(),
+vi.mock("@/lib/files/storage", () => ({
+  initializeStorage: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("filesRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    const mockCreateSignedUploadUrl = vi.fn().mockResolvedValue({
-      data: {
-        path: "attachments/random_slug/test.txt",
-        token: "test-token",
-      },
-      error: null,
-    });
-
-    const mockFrom = vi.fn().mockReturnValue({
-      createSignedUploadUrl: mockCreateSignedUploadUrl,
-    });
-
-    const mockStorage = {
-      from: mockFrom,
-    };
-
-    const mockSupabase = {
-      storage: mockStorage,
-    };
-
-    (createAdminClient as any).mockReturnValue(mockSupabase);
   });
 
   describe("initiateUpload", () => {
@@ -55,11 +32,9 @@ describe("filesRouter", () => {
         name: "test.txt",
       });
       expect(result.file.key).toContain("random_slug");
-      expect(result.bucket).toEqual("public-uploads");
-      expect(result.signedUpload).toEqual({
-        path: "attachments/random_slug/test.txt",
-        token: "test-token",
-      });
+      expect(result.isPublic).toBe(true);
+      expect(result.uploadUrl).toMatch(/^\/api\/files\/upload\//);
+      expect(result.uploadToken).toBeTruthy();
     });
 
     it("uses private bucket for non-inline files", async () => {
@@ -80,7 +55,9 @@ describe("filesRouter", () => {
       expect(result.file).toMatchObject({
         name: "private.txt",
       });
-      expect(result.bucket).toEqual("private-uploads");
+      expect(result.isPublic).toBe(false);
+      expect(result.uploadUrl).toMatch(/^\/api\/files\/upload\//);
+      expect(result.uploadToken).toBeTruthy();
     });
   });
 });

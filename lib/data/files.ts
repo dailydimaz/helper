@@ -24,7 +24,7 @@ export const getFileUrl = async (file: typeof files.$inferSelect, { preview = fa
   try {
     if (file.isPublic) {
       // For public files, return direct URL to our file serving endpoint
-      return `${env.NEXTAUTH_URL}/api/files/public/${encodeURIComponent(key)}`;
+      return `${env.NEXT_PUBLIC_APP_URL}/api/files/public/${encodeURIComponent(key)}`;
     }
 
     // For private files, create a signed URL
@@ -38,7 +38,7 @@ export const getFileUrl = async (file: typeof files.$inferSelect, { preview = fa
       purpose: preview ? "preview" : "download"
     });
     
-    return `${env.NEXTAUTH_URL}/api/files/${file.slug}?token=${token}`;
+    return `${env.NEXT_PUBLIC_APP_URL}/api/files/${file.slug}?token=${token}`;
   } catch (e) {
     captureExceptionAndLog(e);
     return null;

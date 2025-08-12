@@ -1,7 +1,7 @@
 import { retry } from "@lifeomic/attempt";
 import { CoreMessage, GenerateTextResult, Tool } from "ai";
 import { z } from "zod";
-import { aiUsageEvents } from "@/db/schema/aiUsageEvents";
+import { aiUsageEventsTable } from "@/db/schema/aiUsageEvents";
 import { mailboxes } from "@/db/schema/mailboxes";
 import { trackAIUsageEvent } from "@/lib/data/aiUsageEvents";
 import {
@@ -18,7 +18,7 @@ export { generateCompletion, generateEmbedding };
 type CommonAIQueryOptions = {
   messages: CoreMessage[];
   mailbox: typeof mailboxes.$inferSelect;
-  queryType: (typeof aiUsageEvents.$inferSelect)["queryType"];
+  queryType: (typeof aiUsageEventsTable.$inferSelect)["queryType"];
   model?: AvailableModel;
   system?: string;
   temperature?: number;

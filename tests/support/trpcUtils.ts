@@ -1,9 +1,9 @@
 import { assertDefined } from "@/components/utils/assert";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { usersTable } from "@/db/schema";
 import { getProfile } from "@/lib/data/user";
 import { createTRPCContext } from "@/trpc";
 
-export const createTestTRPCContext = async (user: typeof authUsers.$inferSelect) =>
+export const createTestTRPCContext = async (user: typeof usersTable.$inferSelect) =>
   createTRPCContext({
     user: await createTestAuthUser(user),
     headers: new Headers({
@@ -11,7 +11,7 @@ export const createTestTRPCContext = async (user: typeof authUsers.$inferSelect)
     }),
   });
 
-const createTestAuthUser = async (user: typeof authUsers.$inferSelect) => {
+const createTestAuthUser = async (user: typeof usersTable.$inferSelect) => {
   return {
     email: user.email,
     ...assertDefined(await getProfile(user.id)),

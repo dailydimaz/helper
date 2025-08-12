@@ -24,7 +24,6 @@ import { createDbClient } from "@/db/client";
 import { explainAnalyze } from "@/db/lib/debug";
 import * as schemas from "@/db/schema";
 import { env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/server";
 
 const db = createDbClient(env.POSTGRES_URL_NON_POOLING, { max: 1 });
 
@@ -53,7 +52,6 @@ Object.entries({
   ilike,
   exists,
   notExists,
-  createAdminClient,
 }).forEach(([key, value]) => {
   (globalThis as any)[key] = value;
 });

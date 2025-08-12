@@ -56,7 +56,7 @@ export const setupJobFunctions = async () => {
     sql.raw(`
       create or replace function call_job_endpoint(job_body text, queue_message_id text) returns text as $$
       declare
-        endpoint_url text := '${env.NODE_ENV === "development" ? "http://host.docker.internal:3010" : env.AUTH_URL}/api/job';
+        endpoint_url text := '${env.NODE_ENV === "development" ? "http://host.docker.internal:3010" : env.NEXT_PUBLIC_APP_URL}/api/job';
         hmac_secret text;
         timestamp_str text;
         hmac_payload text;

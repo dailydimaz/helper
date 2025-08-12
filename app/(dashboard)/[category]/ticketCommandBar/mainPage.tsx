@@ -106,7 +106,7 @@ export const useMainPage = ({
   });
 
   const handleSavedReplySelect = useCallback(
-    (savedReply: { slug: string; content: string }) => {
+    async (savedReply: { slug: string; content: string }) => {
       try {
         if (!onInsertReply) {
           throw new Error("onInsertReply function is not available");

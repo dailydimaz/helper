@@ -2,14 +2,18 @@ import { faker } from "@faker-js/faker";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { mailboxes } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { mailboxes, usersTable } from "@/db/schema";
 import { getBasicProfileById } from "@/lib/data/user";
 
-const createUser = async (overrides: Partial<typeof authUsers.$inferInsert> = {}) => {
+const createUser = async (overrides: Partial<typeof usersTable.$inferInsert> = {}) => {
   const user = await db
-    .insert(authUsers)
-    .values({ id: faker.string.uuid(), email: faker.internet.email(), ...overrides })
+    .insert(usersTable)
+    .values({ 
+      id: faker.string.uuid(), 
+      email: faker.internet.email(), 
+      password: faker.internet.password(),
+      ...overrides 
+    })
     .returning()
     .then(takeUniqueOrThrow);
 
@@ -24,7 +28,7 @@ export const userFactory = {
     userOverrides = {},
     mailboxOverrides = {},
   }: {
-    userOverrides?: Partial<typeof authUsers.$inferInsert>;
+    userOverrides?: Partial<typeof usersTable.$inferInsert>;
     mailboxOverrides?: Partial<typeof mailboxes.$inferInsert>;
   } = {}) => {
     const { user, profile } = await createUser(userOverrides);

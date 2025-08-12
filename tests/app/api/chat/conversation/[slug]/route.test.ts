@@ -5,11 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, PATCH } from "@/app/api/chat/conversation/[slug]/route";
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
-import { createAdminClient } from "@/lib/supabase/server";
-
-vi.mock("@/lib/supabase/server", () => ({
-  createAdminClient: vi.fn(),
-}));
 
 vi.mock("@/lib/realtime/publish", () => ({
   publishToRealtime: vi.fn(),
@@ -28,13 +23,6 @@ vi.mock("@/app/api/widget/utils", async (importOriginal) => ({
 describe("GET /api/chat/conversation/[slug]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-
-    const mockSupabase = {
-      channel: vi.fn().mockReturnValue({
-        send: vi.fn(),
-      }),
-    };
-    (createAdminClient as any).mockReturnValue(mockSupabase);
   });
 
   it("should update lastReadAt when markRead is true", async () => {
@@ -75,13 +63,6 @@ describe("GET /api/chat/conversation/[slug]", () => {
 describe("PATCH /api/chat/conversation/[slug]", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-
-    const mockSupabase = {
-      channel: vi.fn().mockReturnValue({
-        send: vi.fn(),
-      }),
-    };
-    (createAdminClient as any).mockReturnValue(mockSupabase);
   });
 
   it("should update lastReadAt when markRead is true", async () => {

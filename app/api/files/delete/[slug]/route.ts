@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { filesTable } from "@/db/schema/files";
 import { deleteFile } from "@/lib/files/storage";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function DELETE(
   request: NextRequest,

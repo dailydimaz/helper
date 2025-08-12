@@ -84,14 +84,14 @@ export async function POST(request: Request) {
     notifications = await fetchAndUpdateUnsentNotifications(platformCustomer);
   }
 
-  // TODO: update result type and remove unnecesary fields
+  // TODO: update result type and remove unnecessary fields
   return corsResponse<
     CreateSessionResult & { valid: true; showWidget: boolean; notifications: any; experimentalReadPage?: boolean }
   >({
     valid: true,
     token,
-    supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl: "", // Legacy field - kept for compatibility
+    supabaseAnonKey: "", // Legacy field - kept for compatibility
     showWidget,
     notifications,
     experimentalReadPage: body.experimentalReadPage,

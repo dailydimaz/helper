@@ -58,9 +58,7 @@ const replaceAsync = async (
 
 const shouldProxyUrl = (url: string) =>
   url.startsWith("http") &&
-  !url.startsWith(`${env.PROXY_URL}/`) &&
-  !url.startsWith(`${env.AUTH_URL}/`) &&
-  !url.startsWith(`${env.NEXT_PUBLIC_SUPABASE_URL}/`);
+  !url.startsWith(`${env.PROXY_URL}/`);
 
 const proxyUrl = async (url: string) => {
   if (!env.PROXY_SECRET_KEY || !env.PROXY_URL) return url;

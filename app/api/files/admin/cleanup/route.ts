@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanupOrphanedFiles, getStorageStats } from "@/lib/files/cleanup";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {

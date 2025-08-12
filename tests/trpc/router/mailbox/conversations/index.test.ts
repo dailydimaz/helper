@@ -8,8 +8,7 @@ import { mockTriggerEvent } from "@tests/support/jobsUtils";
 import { createTestTRPCContext } from "@tests/support/trpcUtils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db/client";
-import { conversations, mailboxes } from "@/db/schema";
-import type { authUsers } from "@/db/supabaseSchema/auth";
+import { conversations, mailboxes, usersTable } from "@/db/schema";
 import { createCaller } from "@/trpc";
 
 vi.mock("@/lib/slack/client", () => ({
@@ -24,7 +23,7 @@ vi.mock("@/lib/data/organization", () => ({
   getOrganizationMembers: vi.fn(),
 }));
 
-let user: typeof authUsers.$inferSelect;
+let user: typeof usersTable.$inferSelect;
 
 beforeEach(async () => {
   vi.clearAllMocks();

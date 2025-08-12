@@ -10,16 +10,15 @@ import { mailboxFactory } from "@tests/support/factories/mailboxes";
 import { platformCustomerFactory } from "@tests/support/factories/platformCustomers";
 import { toolsFactory } from "@tests/support/factories/tools";
 import { addDays, addHours, subDays, subHours } from "date-fns";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { htmlToText } from "html-to-text";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
 import { indexConversationMessage } from "@/jobs/indexConversation";
 import { env } from "@/lib/env";
-// TODO: Replace with JWT auth based seeding
-// import { createAdminClient } from "@/lib/supabase/server";
-import { conversationMessages, conversations, mailboxesMetadataApi, userProfiles } from "../schema";
+import { createUser } from "@/lib/auth/authService";
+import { conversationMessages, conversations, mailboxesMetadataApi, usersTable } from "../schema";
 
 const getTables = async () => {
   const result = await db.execute(sql`
@@ -57,12 +56,11 @@ export const seedDatabase = async () => {
       widgetHMACSecret: "9cff9d28-7333-4e29-8f01-c2945f1a887f",
     });
 
-    const supabase = createAdminClient();
-    const { data, error: listError } = await supabase.auth.admin.listUsers();
-    if (listError) {
-      throw listError;
-    }
-    const existingUsers = data?.users || [];
+    // Check for existing users and create new ones with JWT auth system
+    const existingUsers = await db
+      .select()
+      .from(usersTable)
+      .where(inArray(usersTable.email, env.INITIAL_USER_EMAILS));
 
     const users = await Promise.all(
       env.INITIAL_USER_EMAILS.map(async (email) => {
@@ -70,28 +68,31 @@ export const seedDatabase = async () => {
 
         if (existingUser) {
           console.log(`User ${email} already exists, skipping creation.`);
-          return existingUser;
+          return {
+            id: existingUser.id,
+            email: existingUser.email,
+            user_metadata: { permissions: existingUser.permissions },
+          };
         }
 
-        const { data, error } = await supabase.auth.admin.createUser({
-          email,
-          password: "password",
-          email_confirm: true,
-          user_metadata: {
-            permissions: "admin",
-          },
-        });
+        // Create user with admin permissions
+        const newUser = await createUser(email, "password", email.split("@")[0]);
+        if (!newUser) {
+          throw new Error(`Failed to create user: ${email}`);
+        }
 
-        const user = assertDefined(data.user, `Failed to create user: ${email}`);
-        if (error) throw error;
-
+        // Update user to admin permissions
         await db
-          .update(userProfiles)
-          .set({
-            permissions: "admin",
-          })
-          .where(eq(userProfiles.id, user.id));
-        return user;
+          .update(usersTable)
+          .set({ permissions: "admin" })
+          .where(eq(usersTable.id, newUser.id));
+
+        console.log(`Created admin user: ${email}`);
+        return {
+          id: newUser.id,
+          email: newUser.email,
+          user_metadata: { permissions: "admin" },
+        };
       }),
     );
 
