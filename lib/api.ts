@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, ZodSchema } from "zod";
+import { PerformanceMonitor } from './database/optimizations';
+
+// Request deduplication cache for performance optimization
+const requestCache = new Map<string, { promise: Promise<any>; timestamp: number }>();
+const REQUEST_CACHE_TTL = 1000; // 1 second
+
+// Rate limiting store
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -13,25 +21,132 @@ export interface ApiResponse<T = any> {
     perPage: number;
     totalPages: number;
   };
+  performance?: {
+    responseTime: number;
+    cached: boolean;
+  };
 }
 
-// Response utilities
-export function apiSuccess<T>(data: T, message?: string): NextResponse<ApiResponse<T>> {
-  return NextResponse.json({
+export interface CacheOptions {
+  maxAge?: number; // seconds
+  staleWhileRevalidate?: number; // seconds
+  private?: boolean;
+}
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetTime: number;
+}
+
+/**
+ * Generate cache key for request deduplication
+ */
+function generateCacheKey(method: string, url: string, body?: any): string {
+  const bodyHash = body ? JSON.stringify(body) : '';
+  return `${method}:${url}:${bodyHash}`;
+}
+
+/**
+ * Deduplicate concurrent identical requests
+ */
+export function deduplicateRequest<T>(
+  key: string,
+  requestFn: () => Promise<T>
+): Promise<T> {
+  const cached = requestCache.get(key);
+  const now = Date.now();
+  
+  if (cached && (now - cached.timestamp) < REQUEST_CACHE_TTL) {
+    return cached.promise;
+  }
+  
+  const promise = requestFn().finally(() => {
+    // Clean up cache entry after request completes
+    setTimeout(() => {
+      requestCache.delete(key);
+    }, REQUEST_CACHE_TTL);
+  });
+  
+  requestCache.set(key, { promise, timestamp: now });
+  return promise;
+}
+
+/**
+ * Enhanced API success response with performance optimizations
+ */
+export function apiSuccess<T>(
+  data: T, 
+  options: {
+    message?: string;
+    cache?: CacheOptions;
+    compress?: boolean;
+    responseTime?: number;
+    cached?: boolean;
+  } = {}
+): NextResponse<ApiResponse<T>> {
+  const { 
+    message, 
+    cache, 
+    compress = true, 
+    responseTime, 
+    cached = false 
+  } = options;
+  
+  const response = NextResponse.json({
     success: true,
     data,
     message,
+    ...(responseTime !== undefined && {
+      performance: { responseTime, cached },
+    }),
   });
+  
+  // Set caching headers
+  if (cache) {
+    const { maxAge = 300, staleWhileRevalidate = 600, private: isPrivate = false } = cache;
+    
+    const cacheControl = [
+      isPrivate ? 'private' : 'public',
+      `max-age=${maxAge}`,
+      `stale-while-revalidate=${staleWhileRevalidate}`,
+    ].join(', ');
+    
+    response.headers.set('Cache-Control', cacheControl);
+  }
+  
+  // Enable compression for large responses
+  if (compress && JSON.stringify(data).length > 1000) {
+    response.headers.set('Content-Encoding', 'gzip');
+  }
+  
+  // Performance headers
+  response.headers.set('X-Response-Time', Date.now().toString());
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  
+  return response;
 }
 
-export function apiError(error: string, status: number = 400): NextResponse<ApiResponse> {
-  return NextResponse.json(
+export function apiError(
+  error: string, 
+  status: number = 400,
+  errors?: Record<string, string>,
+  metadata?: Record<string, any>
+): NextResponse<ApiResponse> {
+  const response = NextResponse.json(
     {
       success: false,
       error,
+      ...(errors && { errors }),
+      ...(metadata && { metadata }),
     },
     { status }
   );
+  
+  response.headers.set('X-Response-Time', Date.now().toString());
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  
+  return response;
 }
 
 export function apiValidationError(errors: Record<string, string>): NextResponse<ApiResponse> {
@@ -121,8 +236,8 @@ export function createPaginationResponse<T>(
 
 export function parsePagination(request: NextRequest): { page: number; perPage: number; offset: number } {
   const url = new URL(request.url);
-  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
-  const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get("perPage") || "10")));
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const perPage = Math.min(100, Math.max(1, parseInt(url.searchParams.get("perPage") || "10", 10)));
   const offset = (page - 1) * perPage;
   
   return { page, perPage, offset };
@@ -145,7 +260,71 @@ export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   return apiError("Internal server error", 500);
 }
 
-// Method utilities
+/**
+ * Rate limiting utility
+ */
+export function rateLimit(
+  identifier: string,
+  maxRequests: number = 100,
+  windowMs: number = 60 * 1000 // 1 minute
+): RateLimitResult {
+  const now = Date.now();
+  const record = rateLimitStore.get(identifier);
+  
+  if (!record || now > record.resetTime) {
+    const resetTime = now + windowMs;
+    rateLimitStore.set(identifier, { count: 1, resetTime });
+    return { allowed: true, remaining: maxRequests - 1, resetTime };
+  }
+  
+  if (record.count >= maxRequests) {
+    return { allowed: false, remaining: 0, resetTime: record.resetTime };
+  }
+  
+  record.count++;
+  return {
+    allowed: true,
+    remaining: maxRequests - record.count,
+    resetTime: record.resetTime,
+  };
+}
+
+/**
+ * Enhanced database query optimization for API routes
+ */
+export async function optimizedQuery<T>(
+  queryName: string,
+  queryFn: () => Promise<T>,
+  cacheKey?: string,
+  cacheTTL?: number
+): Promise<T> {
+  const startTime = Date.now();
+  const monitor = PerformanceMonitor.getInstance();
+  
+  try {
+    let result: T;
+    
+    if (cacheKey && cacheTTL) {
+      const { cacheQuery } = await import('./database/optimizations');
+      result = await cacheQuery(cacheKey, queryFn, cacheTTL);
+    } else {
+      result = await queryFn();
+    }
+    
+    const duration = Date.now() - startTime;
+    monitor.recordSlowQuery(queryName, duration);
+    
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    monitor.recordSlowQuery(`${queryName} (ERROR)`, duration);
+    throw error;
+  }
+}
+
+/**
+ * Performance-optimized method handler with monitoring
+ */
 export function createMethodHandler(handlers: {
   GET?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
   POST?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
@@ -155,11 +334,90 @@ export function createMethodHandler(handlers: {
 }) {
   const methodMap = {} as Record<string, (request: NextRequest, ...args: any[]) => Promise<NextResponse>>;
   
-  if (handlers.GET) methodMap.GET = handlers.GET;
-  if (handlers.POST) methodMap.POST = handlers.POST;
-  if (handlers.PUT) methodMap.PUT = handlers.PUT;
-  if (handlers.DELETE) methodMap.DELETE = handlers.DELETE;
-  if (handlers.PATCH) methodMap.PATCH = handlers.PATCH;
+  Object.entries(handlers).forEach(([method, handler]) => {
+    if (handler) {
+      methodMap[method] = async (request: NextRequest, ...args: any[]) => {
+        const startTime = Date.now();
+        const monitor = PerformanceMonitor.getInstance();
+        const url = request.nextUrl.pathname;
+        
+        try {
+          // Request deduplication for GET requests
+          if (method === 'GET') {
+            const cacheKey = generateCacheKey(method, request.url);
+            return await deduplicateRequest(cacheKey, () => handler(request, ...args));
+          }
+          
+          // Rate limiting check
+          const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
+          const rateCheck = rateLimit(`${clientIP}:${method}:${url}`);
+          
+          if (!rateCheck.allowed) {
+            return apiError('Rate limit exceeded', 429, undefined, {
+              retryAfter: Math.ceil((rateCheck.resetTime - Date.now()) / 1000),
+            });
+          }
+          
+          const response = await handler(request, ...args);
+          const duration = Date.now() - startTime;
+          
+          // Track API performance
+          monitor.recordSlowQuery(`API ${method} ${url}`, duration);
+          
+          // Add rate limit headers
+          response.headers.set('X-RateLimit-Remaining', rateCheck.remaining.toString());
+          response.headers.set('X-RateLimit-Reset', rateCheck.resetTime.toString());
+          
+          return response;
+        } catch (error) {
+          const duration = Date.now() - startTime;
+          console.error(`API Error in ${method} ${url}:`, error);
+          
+          monitor.recordSlowQuery(`API ${method} ${url} (ERROR)`, duration);
+          
+          if (error instanceof Error) {
+            return apiError(error.message, 500, undefined, { duration });
+          }
+          
+          return apiError('Internal server error', 500, undefined, { duration });
+        }
+      };
+    }
+  });
   
   return methodMap;
+}
+
+/**
+ * Batch API response optimization for large datasets
+ */
+export function batchApiResponse<T>(
+  items: T[],
+  options: {
+    batchSize?: number;
+    delay?: number;
+  } = {}
+): Promise<T[]> {
+  const { batchSize = 100, delay = 0 } = options;
+  
+  if (items.length <= batchSize) {
+    return Promise.resolve(items);
+  }
+  
+  // Process in batches to avoid overwhelming the client
+  const batches = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
+  }
+  
+  return batches.reduce(
+    (promise, batch, index) =>
+      promise.then(async (results) => {
+        if (delay > 0 && index > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+        return [...results, ...batch];
+      }),
+    Promise.resolve([] as T[])
+  );
 }

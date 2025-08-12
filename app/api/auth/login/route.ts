@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { authenticateUser, createSession, setAuthCookie } from "@/lib/auth";
-import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/lib/api";
+import { setAuthCookie } from "@/lib/auth";
+import { apiError, createMethodHandler, validateRequest } from "@/lib/api";
+import { authenticateUserSecure, createSecureSession } from "@/lib/security/authEnhanced";
+import { validateCSRFWithOrigin, initializeCSRF } from "@/lib/security/csrf";
+import { applyCORSHeaders, CORS_CONFIGS } from "@/lib/security/cors";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -9,6 +12,12 @@ const loginSchema = z.object({
 });
 
 async function POST(request: NextRequest) {
+  // Validate CSRF and origin
+  const csrfValidation = await validateCSRFWithOrigin(request);
+  if (!csrfValidation.valid) {
+    return apiError(csrfValidation.error || "CSRF validation failed", 403);
+  }
+
   const validation = await validateRequest(request, loginSchema);
   
   if ("error" in validation) {
@@ -18,27 +27,42 @@ async function POST(request: NextRequest) {
   const { email, password } = validation.data;
 
   try {
-    const user = await authenticateUser(email, password);
+    // Use enhanced authentication with security checks
+    const authResult = await authenticateUserSecure(email, password, request);
     
-    if (!user) {
-      return apiError("Invalid email or password", 401);
+    if (!authResult.success) {
+      if (authResult.rateLimited) {
+        return apiError(authResult.error || "Rate limited", 429, undefined, {
+          retryAfter: authResult.retryAfter,
+        });
+      }
+      return apiError(authResult.error || "Invalid email or password", 401);
     }
 
-    const token = await createSession(user.id, request);
+    const user = authResult.user!;
+    
+    // Create secure session
+    const { token, sessionId } = await createSecureSession(user.id, request);
     const response = setAuthCookie(token);
+    
+    // Initialize CSRF protection
+    await initializeCSRF(request, response, sessionId, user.id);
     
     // Return user data without sensitive information
     const { password: _, ...userData } = user;
     
+    // Apply CORS headers
+    const corsResponse = applyCORSHeaders(request, response, CORS_CONFIGS.AUTH);
+    
     // Modify the response to include user data and success message
-    const responseBody = await response.json();
+    const responseBody = await corsResponse.json();
     return new Response(JSON.stringify({
       ...responseBody,
       data: userData,
       message: "Login successful"
     }), {
       status: 200,
-      headers: response.headers,
+      headers: corsResponse.headers,
     });
   } catch (error) {
     console.error("Login error:", error);

@@ -7,9 +7,29 @@ import { validateFile } from "@/lib/files/validation";
 import { generateSecureFileKey, createTempDownloadToken } from "@/lib/files/security";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { getCurrentUser } from "@/lib/auth";
+import { rateLimit, RATE_LIMIT_CONFIGS, getClientId } from "@/lib/security/rateLimiting";
+import { validateCSRFWithOrigin } from "@/lib/security/csrf";
+import { applyCORSHeaders, CORS_CONFIGS } from "@/lib/security/cors";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting for file uploads
+    const rateLimitResult = rateLimit(request, 'FILE_UPLOAD');
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ 
+        error: "Rate limit exceeded for file uploads",
+        retryAfter: rateLimitResult.retryAfter 
+      }, { status: 429 });
+    }
+
+    // CSRF protection
+    const csrfValidation = await validateCSRFWithOrigin(request);
+    if (!csrfValidation.valid) {
+      return NextResponse.json({ 
+        error: csrfValidation.error || "CSRF validation failed" 
+      }, { status: 403 });
+    }
+
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -83,7 +103,7 @@ export async function POST(request: NextRequest) {
     const uploadToken = await createTempDownloadToken(fileRecord.slug!, user.id, 15);
     const uploadUrl = `/api/files/upload/${fileRecord.slug}`;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       file: {
         id: fileRecord.id,
         slug: fileRecord.slug,
@@ -98,6 +118,9 @@ export async function POST(request: NextRequest) {
       uploadUrl,
       isPublic,
     });
+
+    // Apply CORS headers
+    return applyCORSHeaders(request, response, CORS_CONFIGS.FILES);
 
   } catch (error) {
     captureExceptionAndLog(error);

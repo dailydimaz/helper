@@ -49,7 +49,10 @@
     "generate-ssl-certificates": "bash scripts/generate-ssl-certificates.sh",
     "run-on-packages": "pnpm run --filter=!helperai --if-present --workspace-concurrency=1",
     "with-dev-env": "dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local --",
-    "with-test-env": "dotenv -e ./.env.test -e ./.env.test.local --"
+    "with-test-env": "dotenv -e ./.env.test -e ./.env.test.local --",
+    "performance:test": "pnpm run with-dev-env pnpm tsx --conditions=react-server ./scripts/performance-test.ts",
+    "performance:benchmark": "pnpm run with-dev-env pnpm tsx --conditions=react-server -e 'import { performanceBenchmark } from \"./lib/performance/benchmark\"; performanceBenchmark.runAllBenchmarks().then(console.log)'",
+    "performance:monitor": "pnpm run with-dev-env pnpm tsx --conditions=react-server -e 'import { PerformanceMonitor } from \"./lib/database/optimizations\"; console.log(PerformanceMonitor.getInstance().getPerformanceReport())'"
   },
   "dependencies": {
     "@ai-sdk/fireworks": "^0.1.10",

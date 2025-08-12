@@ -3,7 +3,9 @@ import { SQL, sql, and, or, eq, count, desc, asc, ilike } from "drizzle-orm";
 import { PgTable } from "drizzle-orm/pg-core";
 
 /**
- * Database query optimization utilities
+ * Enhanced Database Query Optimization System
+ * Optimizes PostgreSQL queries for production performance
+ * Includes N+1 prevention, caching, indexing analysis, and monitoring
  */
 
 export interface PaginationOptions {
@@ -282,25 +284,274 @@ export async function checkDatabaseHealth(): Promise<{
 /**
  * Index usage analyzer (for development)
  */
-export async function analyzeQuery(query: string): Promise<any> {
+/**
+ * Enhanced query analysis with performance insights
+ */
+export async function analyzeQuery(query: string): Promise<{
+  plan: any;
+  performance: {
+    estimatedCost: number;
+    actualTime: number;
+    rowsReturned: number;
+    usesIndex: boolean;
+    suggestedIndexes: string[];
+  };
+} | null> {
   try {
-    const explanation = await db.execute(sql.raw(`EXPLAIN ANALYZE ${query}`));
-    return explanation;
+    const explanation = await db.execute(sql.raw(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`));
+    const plan = explanation[0]?.['QUERY PLAN']?.[0];
+    
+    if (!plan) return null;
+    
+    return {
+      plan,
+      performance: {
+        estimatedCost: plan['Total Cost'] || 0,
+        actualTime: plan['Actual Total Time'] || 0,
+        rowsReturned: plan['Actual Rows'] || 0,
+        usesIndex: JSON.stringify(plan).includes('Index'),
+        suggestedIndexes: extractIndexSuggestions(plan),
+      },
+    };
   } catch (error) {
     console.error('Query analysis failed:', error);
     return null;
   }
 }
 
+/**
+ * Extract index suggestions from query plan
+ */
+function extractIndexSuggestions(plan: any): string[] {
+  const suggestions: string[] = [];
+  
+  // Look for sequential scans that could benefit from indexes
+  const planStr = JSON.stringify(plan);
+  if (planStr.includes('Seq Scan')) {
+    suggestions.push('Consider adding indexes on frequently queried columns');
+  }
+  if (planStr.includes('Sort')) {
+    suggestions.push('Consider adding indexes on sorted columns');
+  }
+  if (planStr.includes('Hash Join')) {
+    suggestions.push('Consider adding indexes on join columns');
+  }
+  
+  return suggestions;
+}
+
+/**
+ * Query result caching system
+ */
+const queryCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+export function cacheQuery<T>(
+  key: string, 
+  queryFn: () => Promise<T>, 
+  ttlMs: number = 300000 // 5 minutes default
+): Promise<T> {
+  const cached = queryCache.get(key);
+  const now = Date.now();
+  
+  if (cached && (now - cached.timestamp) < cached.ttl) {
+    return Promise.resolve(cached.data);
+  }
+  
+  return queryFn().then(data => {
+    queryCache.set(key, { data, timestamp: now, ttl: ttlMs });
+    return data;
+  });
+}
+
+export function clearCache(pattern?: string): void {
+  if (!pattern) {
+    queryCache.clear();
+    return;
+  }
+  
+  for (const key of queryCache.keys()) {
+    if (key.includes(pattern)) {
+      queryCache.delete(key);
+    }
+  }
+}
+
+/**
+ * N+1 Query Prevention System
+ */
+export class DataLoader<K, V> {
+  private batchLoadFn: (keys: K[]) => Promise<V[]>;
+  private cache = new Map<K, Promise<V>>();
+  private batch = new Set<K>();
+  private batchTimer: NodeJS.Timeout | null = null;
+  
+  constructor(
+    batchLoadFn: (keys: K[]) => Promise<V[]>,
+    private maxBatchSize: number = 100,
+    private batchTimeoutMs: number = 10
+  ) {
+    this.batchLoadFn = batchLoadFn;
+  }
+  
+  load(key: K): Promise<V> {
+    if (this.cache.has(key)) {
+      return this.cache.get(key)!;
+    }
+    
+    const promise = new Promise<V>((resolve, reject) => {
+      this.batch.add(key);
+      
+      if (this.batchTimer) {
+        clearTimeout(this.batchTimer);
+      }
+      
+      this.batchTimer = setTimeout(() => {
+        this.executeBatch().then(() => {
+          const result = this.cache.get(key);
+          if (result) {
+            result.then(resolve).catch(reject);
+          } else {
+            reject(new Error('Key not found in batch result'));
+          }
+        }).catch(reject);
+      }, this.batchTimeoutMs);
+      
+      if (this.batch.size >= this.maxBatchSize) {
+        clearTimeout(this.batchTimer);
+        this.executeBatch().then(() => {
+          const result = this.cache.get(key);
+          if (result) {
+            result.then(resolve).catch(reject);
+          } else {
+            reject(new Error('Key not found in batch result'));
+          }
+        }).catch(reject);
+      }
+    });
+    
+    this.cache.set(key, promise);
+    return promise;
+  }
+  
+  private async executeBatch(): Promise<void> {
+    if (this.batch.size === 0) return;
+    
+    const keys = Array.from(this.batch);
+    this.batch.clear();
+    
+    try {
+      const results = await this.batchLoadFn(keys);
+      
+      keys.forEach((key, index) => {
+        if (results[index] !== undefined) {
+          this.cache.set(key, Promise.resolve(results[index]));
+        }
+      });
+    } catch (error) {
+      keys.forEach(key => {
+        this.cache.set(key, Promise.reject(error));
+      });
+    }
+  }
+  
+  clear(key?: K): void {
+    if (key) {
+      this.cache.delete(key);
+    } else {
+      this.cache.clear();
+    }
+  }
+}
+
+/**
+ * Database connection pool optimization
+ */
+export async function optimizeConnectionPool(): Promise<void> {
+  // This would typically be configured at the database client level
+  // For PostgreSQL with node-postgres, optimize pool settings
+  console.log('Optimizing connection pool with recommended settings:', RECOMMENDED_POOL_CONFIG);
+}
+
+/**
+ * Performance monitoring and alerting
+ */
+export class PerformanceMonitor {
+  private static instance: PerformanceMonitor;
+  private alerts: Array<{ query: string; duration: number; timestamp: Date }> = [];
+  
+  static getInstance(): PerformanceMonitor {
+    if (!PerformanceMonitor.instance) {
+      PerformanceMonitor.instance = new PerformanceMonitor();
+    }
+    return PerformanceMonitor.instance;
+  }
+  
+  recordSlowQuery(query: string, duration: number): void {
+    if (duration > 1000) { // Slow queries > 1s
+      this.alerts.push({ query, duration, timestamp: new Date() });
+      
+      // Keep only last 100 slow queries
+      if (this.alerts.length > 100) {
+        this.alerts.shift();
+      }
+      
+      console.warn(`🐌 SLOW QUERY ALERT: ${query} took ${duration}ms`);
+    }
+  }
+  
+  getSlowQueries(): Array<{ query: string; duration: number; timestamp: Date }> {
+    return this.alerts.slice().reverse();
+  }
+  
+  getPerformanceReport(): {
+    slowQueriesCount: number;
+    averageSlowQueryTime: number;
+    recommendations: string[];
+  } {
+    const slowQueries = this.alerts;
+    const avgTime = slowQueries.length > 0 
+      ? slowQueries.reduce((sum, q) => sum + q.duration, 0) / slowQueries.length
+      : 0;
+    
+    const recommendations = [
+      'Add database indexes on frequently queried columns',
+      'Use pagination for large result sets',
+      'Implement query result caching',
+      'Optimize WHERE clauses to use indexed columns',
+      'Consider read replicas for heavy read workloads',
+    ];
+    
+    return {
+      slowQueriesCount: slowQueries.length,
+      averageSlowQueryTime: Math.round(avgTime),
+      recommendations,
+    };
+  }
+}
+
 export default {
+  // Core optimization functions
   pagination: optimizePagination,
   search: buildSearchCondition,
   sort: buildSortCondition,
   where: buildWhereConditions,
   count: getOptimizedCount,
   batch: batchQuery,
+  
+  // Performance monitoring
   track: trackQuery,
   metrics: getQueryMetrics,
   health: checkDatabaseHealth,
   analyze: analyzeQuery,
+  
+  // Caching system
+  cache: cacheQuery,
+  clearCache,
+  
+  // N+1 prevention
+  DataLoader,
+  
+  // Performance monitoring
+  monitor: PerformanceMonitor.getInstance(),
+  optimizePool: optimizeConnectionPool,
 };

@@ -18,6 +18,33 @@ let nextConfig: NextConfig = {
   // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-8875108
   transpilePackages: ["next-auth"],
   serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm"],
+  
+  // Performance optimizations
+  compress: true,
+  generateEtags: true,
+  httpAgentOptions: {
+    keepAlive: true,
+  },
+  
+  // Bundle optimization
+  swcMinify: true,
+  modularizeImports: {
+    '@/components/ui': {
+      transform: '@/components/ui/{{member}}',
+    },
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+      skipDefaultConversion: true,
+    },
+  },
+  
+  // Experimental features for performance
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    webpackBuildWorker: true,
+    parallelServerCompiles: true,
+    parallelServerBuildTraces: true,
+  },
   outputFileTracingIncludes: {
     "/widget/sdk.js": ["./public/**/*"],
   },
@@ -152,6 +179,11 @@ let nextConfig: NextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
+          },
+          // Performance and caching headers
+          {
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
         ],
       },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { createSecurityMiddleware, applySecurityHeaders, logSecurityEvent } from "@/lib/security/middleware";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-super-secret-jwt-key');
 const COOKIE_NAME = 'auth-token';
@@ -17,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/api/auth',
   '/widget',
   '/api/widget',
+  '/api/health',
 ];
 
 async function verifyAuth(request: NextRequest): Promise<boolean> {
@@ -31,34 +33,72 @@ async function verifyAuth(request: NextRequest): Promise<boolean> {
   }
 }
 
+// Create security middleware instance
+const securityMiddleware = createSecurityMiddleware({
+  enableCSRF: true,
+  enableCORS: true,
+  enableRateLimit: true,
+  enableSessionValidation: false, // We'll handle this separately for now
+  enableSecurityHeaders: true,
+});
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Skip authentication check for public routes
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // Check if route requires authentication
-  const requiresAuth = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
-
-  if (requiresAuth) {
-    const isAuthenticated = await verifyAuth(request);
-
-    // Redirect to login if not authenticated
-    if (!isAuthenticated) {
-      const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
+  
+  try {
+    // Apply security middleware first
+    const securityResponse = await securityMiddleware(request);
+    if (securityResponse) {
+      return securityResponse;
     }
 
-    // If authenticated and trying to access login, redirect to dashboard
-    if (pathname.startsWith('/login')) {
-      const dashboardUrl = new URL('/mine', request.url);
-      return NextResponse.redirect(dashboardUrl);
+    // Skip authentication check for public routes
+    if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+      const response = NextResponse.next();
+      return applySecurityHeaders(response);
     }
-  }
 
-  return NextResponse.next();
+    // Check if route requires authentication
+    const requiresAuth = PROTECTED_ROUTES.some(route => pathname.startsWith(route));
+
+    if (requiresAuth) {
+      const isAuthenticated = await verifyAuth(request);
+
+      // Redirect to login if not authenticated
+      if (!isAuthenticated) {
+        logSecurityEvent('auth_failure', request, { reason: 'No valid token' });
+        const loginUrl = new URL('/login', request.url);
+        return NextResponse.redirect(loginUrl);
+      }
+
+      // If authenticated and trying to access login, redirect to dashboard
+      if (pathname.startsWith('/login')) {
+        const dashboardUrl = new URL('/mine', request.url);
+        return NextResponse.redirect(dashboardUrl);
+      }
+    }
+
+    const response = NextResponse.next();
+    return applySecurityHeaders(response, {
+      csp: pathname.startsWith('/adm') 
+        ? "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+        : undefined,
+      hsts: process.env.NODE_ENV === 'production',
+      noIndex: pathname.startsWith('/adm'),
+    });
+
+  } catch (error) {
+    console.error('Middleware error:', error);
+    logSecurityEvent('suspicious_activity', request, { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+    
+    // Return a safe fallback response
+    return NextResponse.json(
+      { error: 'Request processing failed' },
+      { status: 500 }
+    );
+  }
 }
 
 export const config = {
