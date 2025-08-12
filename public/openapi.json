@@ -1,11 +1,11 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Helper API",
-    "description": "API for integrating with Helper chat capabilities.\nThese endpoints allow you to create custom chat interfaces or automate interactions with Helper.",
+    "title": "Helper™ API",
+    "description": "API for integrating with Helper™ chat capabilities.\nThese endpoints allow you to create custom chat interfaces or automate interactions with Helper™.\n\nHelper™ is a trademark of Gumroad, Inc. This software is derived from the source code for Gumroad, Inc. Helper™ software.",
     "version": "1.0.0",
     "contact": {
-      "name": "Helper Support",
+      "name": "Helper™ Community Edition Support",
       "url": "https://helper.ai"
     }
   },

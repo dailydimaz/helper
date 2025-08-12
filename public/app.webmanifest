@@ -1,7 +1,7 @@
 {
-  "short_name": "Helper",
-  "name": "Helper for Customer Support",
-  "description": "AI-powered customer support assistant",
+  "short_name": "Helper™ CE",
+  "name": "Helper™ Community Edition",
+  "description": "AI-powered customer support assistant - derived from Gumroad, Inc. Helper™ software",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#280B0B",

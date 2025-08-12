@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="./public/logo.svg#gh-light-mode-only" alt="Helper logo" width="192" />
-  <img src="./public/logo-white.svg#gh-dark-mode-only" alt="Helper logo" width="192" />
-</p>
-<p align="center">
     <a href="https://helper.ai">helper.ai</a> |
     <a href="https://helper.ai/docs">Docs</a>
 </p>
 
-# Helper AI - Lightweight Edition
+# Helper™ Community Edition - Lightweight
+
+**This software is derived from the source code for Gumroad, Inc. Helper™ software.**
 
 **High-performance customer support platform** built with modern web technologies for optimal speed, reliability, and maintainability.
+
+> **Trademark Notice**: Helper™ is a trademark of Gumroad, Inc. This derivative software is not officially endorsed or distributed by Gumroad, Inc.
 
 ## Features
 
@@ -311,4 +311,8 @@ For questions, issues, or contributions:
 
 ## License
 
-Helper is licensed under the [MIT License](LICENSE.md).
+Helper™ Community Edition is licensed under the [MIT License](LICENSE.md).
+
+## Trademark Notice
+
+Helper™ is a trademark of Gumroad, Inc. This software is derived from the source code for Gumroad, Inc. Helper™ software and is not officially endorsed or distributed by Gumroad, Inc.

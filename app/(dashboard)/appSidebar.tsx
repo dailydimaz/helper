@@ -257,8 +257,11 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="flex flex-col gap-2">
         <AccountDropdown />
+        <div className="px-2 py-1 text-xs text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
+          Helper™ is a trademark of Gumroad, Inc.
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

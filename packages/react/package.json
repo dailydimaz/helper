@@ -1,7 +1,7 @@
 {
   "name": "@helperai/react",
   "version": "0.8.4",
-  "description": "React/Next.js integration for Helper chat widget",
+  "description": "React/Next.js integration for Helper™ chat widget - derived from Gumroad, Inc. Helper™ software",
   "keywords": [
     "helper",
     "chat",
@@ -12,7 +12,7 @@
     "nextjs",
     "customer-service"
   ],
-  "author": "Helper (https://helper.ai)",
+  "author": "Helper™ Community Edition (https://helper.ai)",
   "license": "MIT",
   "homepage": "https://helper.ai",
   "repository": {

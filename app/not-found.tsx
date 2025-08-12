@@ -55,15 +55,8 @@ export default function NotFound() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#3D0C11" }}>
       <header className="sticky top-0 z-50">
         <nav className="flex flex-col md:flex-row items-center md:justify-between p-4 mx-4 space-y-4 md:space-y-0">
-          <div className="relative w-[100px] h-[32px] mx-auto md:mx-0">
-            <Image
-              src="/logo-white.svg"
-              priority
-              alt="Helper"
-              width={100}
-              height={32}
-              className="absolute top-0 left-0 transition-opacity duration-300 ease-in-out opacity-100"
-            />
+          <div className="relative w-[100px] h-[32px] mx-auto md:mx-0 bg-white/10 rounded flex items-center justify-center">
+            <span className="text-white text-lg font-bold">Helper™ CE</span>
           </div>
         </nav>
       </header>
@@ -71,7 +64,7 @@ export default function NotFound() {
       <main className="grow flex flex-col items-center justify-center h-screen bg-secondary-light dark:bg-secondary-dark text-center p-4">
         <div className="max-w-md">
           <div className="flex justify-center mb-8">
-            <Image src="/logo_icon.svg" alt="Helper" width={96} height={96} className="md:w-128 md:h-128" />
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-primary/10 rounded-lg flex items-center justify-center text-4xl font-bold">H</div>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-8xl font-bold mb-6 text-secondary dark:text-foreground">Oops!</h1>
           <p className="text-lg md:text-xl mb-12 text-secondary dark:text-foreground">
@@ -93,14 +86,8 @@ export default function NotFound() {
         <div className="flex justify-between items-center w-full">
           <div className="flex items-center">
             <div className="flex flex-col items-start">
-              <a href="https://helper.ai/" target="_blank" rel="noopener noreferrer">
-                <Image
-                  src="/logo.svg"
-                  alt="Helper"
-                  width={100}
-                  height={32}
-                  className="transition-opacity duration-300 ease-in-out opacity-100"
-                />
+              <a href="https://helper.ai/" target="_blank" rel="noopener noreferrer" className="text-sm">
+                <span style={{ color: footerTextColor }}>Helper™ is a trademark of Gumroad, Inc.</span>
               </a>
             </div>
           </div>

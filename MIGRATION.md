@@ -1,5 +1,7 @@
 # Migration Guide: From Supabase to Lightweight Architecture
 
+**This software is derived from the source code for Gumroad, Inc. Helper™ software.**
+
 ## Overview
 
 This comprehensive guide details the migration process from a Supabase-based architecture to our new lightweight system. This migration delivers significant performance improvements, cost reduction, and simplified maintenance while preserving all existing functionality.
@@ -542,3 +544,7 @@ const poolConfig = {
 ---
 
 This migration guide provides a comprehensive roadmap for transitioning from Supabase to the new lightweight system. The migration preserves all existing functionality while providing improved performance, better control, and reduced operational complexity.
+
+---
+
+**Trademark Notice**: Helper™ is a trademark of Gumroad, Inc.

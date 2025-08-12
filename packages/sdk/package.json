@@ -1,7 +1,7 @@
 {
   "name": "@helperai/sdk",
   "version": "1.0.0",
-  "description": "Helper SDK for embedding the widget in client websites",
+  "description": "Helper™ SDK for embedding the widget in client websites - derived from Gumroad, Inc. Helper™ software",
   "private": true,
   "type": "module",
   "module": "dist/esm/utils.js",

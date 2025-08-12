@@ -41,16 +41,17 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="flex flex-col items-center gap-3">
-        <Image
-          src={theme === "dark" || systemTheme === "dark" ? "/logo-white.svg" : "/logo.svg"}
-          alt="Helper"
-          width="110"
-          height="32"
-          className="w-28"
-        />
-        <p className="text-sm text-muted-foreground">
-          Please sign in to continue
-        </p>
+        <div className="bg-primary/10 px-4 py-2 rounded-lg">
+          <span className="text-xl font-bold">Helper™ CE</span>
+        </div>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            Please sign in to continue
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Helper™ is a trademark of Gumroad, Inc.
+          </p>
+        </div>
       </div>
       
       <form onSubmit={handleSubmit}>

@@ -1,6 +1,10 @@
 # Production Deployment Guide
 
-This guide provides comprehensive instructions for deploying the Helper AI lightweight application to production environments. The application has been optimized for performance, security, and maintainability with the new PostgreSQL + Drizzle ORM architecture.
+**This software is derived from the source code for Gumroad, Inc. Helper™ software.**
+
+This guide provides comprehensive instructions for deploying the Helper™ AI lightweight application to production environments. The application has been optimized for performance, security, and maintainability with the new PostgreSQL + Drizzle ORM architecture.
+
+> **Trademark Notice**: Helper™ is a trademark of Gumroad, Inc. This derivative software is not officially endorsed or distributed by Gumroad, Inc.
 
 ## Pre-Deployment Checklist
 
@@ -613,3 +617,7 @@ FROM pg_stat_user_indexes;
 **Guide Version**: 1.0  
 **Last Updated**: August 11, 2025  
 **Next Review**: After production deployment
+
+---
+
+**Trademark Notice**: Helper™ is a trademark of Gumroad, Inc.

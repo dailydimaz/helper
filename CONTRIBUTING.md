@@ -1,5 +1,7 @@
 # Contributing to Helper
 
+**This software is derived from the source code for Gumroad, Inc. Helper™ software.**
+
 Thanks for your interest in contributing! This document will help you get started.
 
 ## Quick Start
@@ -65,25 +67,49 @@ pnpm test:watch
 - Test both happy path and edge cases
 - We use Vitest for unit tests and Playwright for end-to-end tests
 
+## Trademark Compliance Requirements
+
+**IMPORTANT**: All contributions must comply with Helper™ trademark guidelines.
+
+### Required Documentation Updates:
+- When adding/modifying documentation, include proper trademark attribution
+- First mention of Helper in any document must use Helper™
+- Include attribution footer: "Helper is a trademark of Gumroad, Inc."
+- Never use Helper logos in contributions
+- Clearly identify derivative nature of the software
+
+### Compliance Checklist:
+- [ ] Documentation uses Helper™ on first mention
+- [ ] Trademark attribution footer included where required
+- [ ] No unauthorized logo usage
+- [ ] Proper disclaimers in place for derivative software
+- [ ] No claims of official endorsement or affiliation
+
+### Resources:
+- [Trademark Guidelines](TRADEMARK_GUIDELINES.md)
+- [Community Guidelines](COMMUNITY_GUIDELINES.md)
+- [Internal Trademark Usage](INTERNAL_TRADEMARK_USAGE.md)
+
 ## Pull Request
 
 1. Update documentation if you're changing behavior
 2. Add or update tests for your changes
 3. Include screenshots of your test suite passing locally
-4. Use native-sounding English in all communication with no excessive capitalization (e.g HOW IS THIS GOING), multiple question marks (how's this going???), grammatical errors (how's dis going), or typos (thnx fr update).
+4. **Ensure trademark compliance** - verify proper Helper™ usage and attribution
+5. Use native-sounding English in all communication with no excessive capitalization (e.g HOW IS THIS GOING), multiple question marks (how's this going???), grammatical errors (how's dis going), or typos (thnx fr update).
    - ❌ Before: "is this still open ?? I am happy to work on it ??"
    - ✅ After: "Is this actively being worked on? I've started work on it here…"
-5. Make sure all tests pass
-6. Run linting and formatting checks:
+6. Make sure all tests pass
+7. Run linting and formatting checks:
    ```bash
    pnpm lint
    pnpm format
    ```
-7. Request a review from maintainers
-8. After reviews begin, avoid force-pushing to your branch
+8. Request a review from maintainers
+9. After reviews begin, avoid force-pushing to your branch
    - Force-pushing rewrites history and makes review threads hard to follow
    - Don't worry about messy commits - we squash everything when merging to main
-9. The PR will be merged once you have the sign-off of at least one other developer
+10. The PR will be merged once you have the sign-off of at least one other developer
 
 ## Monorepo Structure
 
@@ -142,3 +168,13 @@ A great bug report includes:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE.md).
+
+## Legal Notice
+
+**Trademark Notice**: Helper™ is a trademark of Gumroad, Inc. This derivative software is not officially endorsed or distributed by Gumroad, Inc.
+
+**Compliance Requirement**: All contributors must comply with trademark guidelines and acknowledge understanding of proper Helper™ trademark usage.
+
+---
+
+Helper is a trademark of Gumroad, Inc.

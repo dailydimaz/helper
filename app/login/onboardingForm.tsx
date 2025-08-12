@@ -46,14 +46,15 @@ export function OnboardingForm({ className, ...props }: React.ComponentPropsWith
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="flex flex-col items-center gap-3">
-        <Image
-          src={theme === "dark" || systemTheme === "dark" ? "/logo-white.svg" : "/logo.svg"}
-          alt="Helper"
-          width="110"
-          height="32"
-          className="w-28"
-        />
-        <p className="text-sm text-muted-foreground">Welcome! Let's set up your Helper account</p>
+        <div className="bg-primary/10 px-4 py-2 rounded-lg">
+          <span className="text-xl font-bold">Helper CE</span>
+        </div>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Welcome! Let's set up your Helper Community Edition account</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Helper is a trademark of Gumroad, Inc.
+          </p>
+        </div>
       </div>
       <form onSubmit={handleFormSubmit}>
         <div className="flex flex-col gap-4">
@@ -90,7 +91,7 @@ export function OnboardingForm({ className, ...props }: React.ComponentPropsWith
             className="w-full"
             disabled={!email || !displayName.trim() || isLoading}
           >
-            {isLoading ? "Setting up your account..." : "Start using Helper"}
+            {isLoading ? "Setting up your account..." : "Start using Helper CE"}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
           {formError && <p className="text-sm text-red-500">{formError}</p>}

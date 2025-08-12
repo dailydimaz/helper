@@ -11,8 +11,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppContextProvider } from "@/hooks/use-app";
 
 export const metadata: Metadata = {
-  title: "Helper",
-  description: "AI powered assistant",
+  title: "Helper™ Community Edition",
+  description: "AI powered assistant - derived from Gumroad, Inc. Helper™ software",
   icons: [
     {
       rel: "icon",

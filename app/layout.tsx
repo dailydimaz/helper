@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/themeProvider";
 
 export const metadata: Metadata = {
-  title: "Helper",
-  description: "AI powered assistant",
+  title: "Helper™ Community Edition",
+  description: "AI powered assistant - derived from Gumroad, Inc. Helper™ software",
   manifest: "/app.webmanifest",
   icons: [
     {
