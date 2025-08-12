@@ -305,8 +305,8 @@ The lightweight architecture provides significant improvements over the previous
 
 For questions, issues, or contributions:
 
-- **Issues:** [GitHub Issues](https://github.com/your-org/helper/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/your-org/helper/discussions)
+- **Issues:** [GitHub Issues](https://github.com/dailydimaz/helper/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/dailydimaz/helper/discussions)
 - **Documentation:** [helper.ai/docs](https://helper.ai/docs)
 
 ## License
