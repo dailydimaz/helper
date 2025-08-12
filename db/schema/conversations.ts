@@ -1,15 +1,15 @@
 import { isNull, relations } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp, unique, vector } from "drizzle-orm/pg-core";
-import { mailboxes } from "@/db/schema/mailboxes";
+import { mailboxesTable } from "@/db/schema/mailboxes";
 import { encryptedField } from "../lib/encryptedField";
 import { randomSlugField } from "../lib/random-slug-field";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversationEvents } from "./conversationEvents";
-import { conversationMessages } from "./conversationMessages";
-import { issueGroups } from "./issueGroups";
-import { platformCustomers } from "./platformCustomers";
+import { conversationEventsTable } from "./conversationEvents";
+import { conversationMessagesTable } from "./conversationMessages";
+import { issueGroupsTable } from "./issueGroups";
+import { platformCustomersTable } from "./platformCustomers";
 
-export const conversations = pgTable(
+export const conversationsTable = pgTable(
   "conversations_conversation",
   {
     ...withTimestamps,
@@ -76,26 +76,26 @@ export const conversations = pgTable(
   ],
 ).enableRLS();
 
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  mailbox: one(mailboxes, {
-    fields: [conversations.unused_mailboxId],
-    references: [mailboxes.id],
+export const conversationsTableRelations = relations(conversationsTable, ({ one, many }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [conversationsTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
-  messages: many(conversationMessages),
-  platformCustomer: one(platformCustomers, {
-    fields: [conversations.emailFrom],
-    references: [platformCustomers.email],
+  messages: many(conversationMessagesTable),
+  platformCustomer: one(platformCustomersTable, {
+    fields: [conversationsTable.emailFrom],
+    references: [platformCustomersTable.email],
   }),
-  events: many(conversationEvents),
-  issueGroup: one(issueGroups, {
-    fields: [conversations.issueGroupId],
-    references: [issueGroups.id],
+  events: many(conversationEventsTable),
+  issueGroup: one(issueGroupsTable, {
+    fields: [conversationsTable.issueGroupId],
+    references: [issueGroupsTable.id],
   }),
-  mergedInto: one(conversations, {
-    fields: [conversations.mergedIntoId],
-    references: [conversations.id],
+  mergedInto: one(conversationsTable, {
+    fields: [conversationsTable.mergedIntoId],
+    references: [conversationsTable.id],
   }),
-  mergedConversations: many(conversations, {
+  mergedConversations: many(conversationsTable, {
     relationName: "mergedConversations",
   }),
 }));

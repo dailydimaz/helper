@@ -1,17 +1,16 @@
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 import { ConversationListItem } from "@/app/types/global";
 import { useDebouncedCallback } from "@/components/useDebouncedCallback";
 import { assertDefined } from "@/components/utils/assert";
-import { conversationsListChannelId } from "@/lib/realtime/channels";
-import { useRealtimeEventOnce } from "@/lib/realtime/hooks";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useInfiniteConversations } from "@/hooks/use-conversations";
+import { useMailboxOpenCount } from "@/hooks/use-mailbox";
+import { mutate } from "swr";
 import { useConversationsListInput } from "../shared/queries";
 
 type ConversationListContextType = {
-  conversationListData: RouterOutputs["mailbox"]["conversations"]["list"] | null;
+  conversationListData: any | null;
   isPending: boolean;
   isFetching: boolean;
   isFetchingNextPage: boolean;
@@ -38,19 +37,21 @@ export const ConversationListContextProvider = ({
   children: React.ReactNode;
 }) => {
   const { input } = useConversationsListInput();
-  const { data, isPending, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
-    api.mailbox.conversations.list.useInfiniteQuery(input, {
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? null,
-      refetchOnWindowFocus: false,
-    });
+  const {
+    data,
+    conversations,
+    isLoading: isPending,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    mutate: mutateConversations,
+  } = useInfiniteConversations(input);
+  const { mutate: mutateOpenCount } = useMailboxOpenCount();
   const [, setId] = useQueryState("id", { history: "push" });
 
-  const conversations = useMemo(() => data?.pages.flatMap((page) => page.conversations) ?? [], [data]);
-  const lastPage = useMemo(() => data?.pages[data?.pages.length - 1], [data]);
-  const currentTotal = useMemo(
-    () => data?.pages.reduce((acc, page) => acc + page.conversations.length, 0) ?? 0,
-    [data],
-  );
+  const lastPage = useMemo(() => data?.pages?.[data?.pages.length - 1], [data]);
+  const currentTotal = useMemo(() => conversations.length, [conversations]);
   const currentIndex = useMemo(
     () => conversations.findIndex((c) => c.slug === currentConversationSlug),
     [conversations, currentConversationSlug],
@@ -82,33 +83,43 @@ export const ConversationListContextProvider = ({
   };
 
   const router = useRouter();
-  const utils = api.useUtils();
   const debouncedInvalidate = useDebouncedCallback(() => {
     router.refresh();
-    utils.mailbox.conversations.list.invalidate();
-    utils.mailbox.openCount.invalidate();
+    mutateConversations();
+    mutateOpenCount();
   }, 1000);
 
   const removeConversationFromList = (condition: (conversation: ConversationListItem) => boolean) => {
-    utils.mailbox.conversations.list.setInfiniteData(input, (data) => {
-      if (!data) return data;
-      return {
+    // Optimistically update the conversation list
+    const updatedConversations = conversations.filter(c => !condition(c));
+    mutateConversations(
+      {
         ...data,
-        pages: data.pages.map((page) => ({
+        pages: data?.pages?.map((page: any) => ({
           ...page,
-          conversations: page.conversations.filter((c) => !condition(c)),
-        })),
-      };
-    });
+          conversations: page.conversations?.filter((c: any) => !condition(c)) || [],
+        })) || [],
+      },
+      false
+    );
+    
+    // Update open count if removing from open conversations
     if (!input.status || input.status[0] === "open") {
-      utils.mailbox.openCount.setData(undefined, (data) => {
-        if (!data) return data;
-        return {
-          ...data,
-          [input.category]: data[input.category] - 1,
-        };
-      });
-      utils.mailbox.openCount.invalidate();
+      mutate(
+        '/mailbox/open-count',
+        (currentData: any) => {
+          if (!currentData?.data) return currentData;
+          return {
+            ...currentData,
+            data: {
+              ...currentData.data,
+              [input.category]: Math.max(0, currentData.data[input.category] - 1),
+            },
+          };
+        },
+        false
+      );
+      mutateOpenCount();
     }
   };
 
@@ -123,45 +134,17 @@ export const ConversationListContextProvider = ({
     moveToNextConversation();
   };
 
-  useRealtimeEventOnce<{
-    id: number;
-    status: string;
-    assignedToId: string | null;
-    assignedToAI: boolean;
-    previousValues: {
-      status: string;
-      assignedToId: string | null;
-      assignedToAI: boolean;
-    };
-  }>(
-    conversationsListChannelId(),
-    "conversation.statusChanged",
-    ({ data: { id, status, assignedToId, previousValues } }) => {
-      const selectedStatus = input.status?.[0] ?? "open";
-      if (previousValues.status !== selectedStatus) return;
-      if (input.category === "assigned" && previousValues.assignedToId === null) return;
-      if (input.category === "unassigned" && previousValues.assignedToId !== null) return;
-      if (input.category === "mine" && previousValues.assignedToId !== data?.pages[0]?.assignedToIds?.[0]) return;
-
-      if (
-        status !== selectedStatus ||
-        (input.category === "assigned" && assignedToId === null) ||
-        (input.category === "unassigned" && assignedToId !== null) ||
-        (input.category === "mine" && assignedToId !== data?.pages[0]?.assignedToIds?.[0])
-      )
-        removeConversationFromList((c) => c.id === id);
-    },
-  );
+  // Real-time updates are now handled automatically by SWR's refreshInterval in useInfiniteConversations
 
   const value = useMemo(
     () => ({
       conversationListData: lastPage
         ? {
             conversations,
-            onboardingState: lastPage.onboardingState,
-            defaultSort: lastPage.defaultSort,
-            assignedToIds: lastPage.assignedToIds,
-            nextCursor: lastPage.nextCursor,
+            onboardingState: lastPage?.onboardingState,
+            defaultSort: lastPage?.defaultSort,
+            assignedToIds: lastPage?.assignedToIds,
+            nextCursor: lastPage?.nextCursor,
           }
         : null,
       isPending,
@@ -179,7 +162,7 @@ export const ConversationListContextProvider = ({
       removeConversationKeepActive,
       navigateToConversation: setId,
     }),
-    [currentConversationSlug, conversations, lastPage, isPending, isFetching, isFetchingNextPage, hasNextPage],
+    [currentConversationSlug, conversations, lastPage, isPending, isFetching, isFetchingNextPage, hasNextPage, currentTotal, currentIndex, fetchNextPage, moveToNextConversation, moveToPreviousConversation, removeConversation, removeConversationKeepActive, setId],
   );
 
   return <ConversationListContext.Provider value={value}>{children}</ConversationListContext.Provider>;

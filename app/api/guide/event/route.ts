@@ -3,7 +3,7 @@ import { z } from "zod";
 import { corsOptions, corsResponse, withWidgetAuth } from "@/app/api/widget/utils";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { guideSessionEventTypeEnum, guideSessionReplays, guideSessions } from "@/db/schema";
+import { guideSessionEventTypeEnum, guideSessionReplaysTable, guideSessionsTable } from "@/db/schema";
 import { createGuideSessionEvent, updateGuideSession } from "@/lib/data/guide";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 

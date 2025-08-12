@@ -1,3 +1,4 @@
+export * from "./users";
 export * from "./mailboxes";
 export * from "./gmailSupportEmails";
 export * from "./conversations";
@@ -18,6 +19,7 @@ export * from "./agentThreads";
 export * from "./agentMessages";
 export * from "./cache";
 export * from "./jobRuns";
+export * from "./jobs";
 export * from "./userProfiles";
 export * from "./savedReplies";
 export * from "./issueGroups";

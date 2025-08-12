@@ -3,10 +3,9 @@ import { drizzle, NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import { PgTransaction } from "drizzle-orm/pg-core";
 import { Pool, PoolConfig } from "pg";
 import * as schema from "@/db/schema";
-import * as authSchema from "@/db/supabaseSchema/auth";
 import { env } from "@/lib/env";
 
-const fullSchema = { ...schema, ...authSchema };
+const fullSchema = { ...schema };
 
 export const createDbClient = (url: string, options: PoolConfig = {}) => {
   // https://github.com/brianc/node-postgres/issues/2558
@@ -22,7 +21,7 @@ declare global {
   var drizzleGlobal: DrizzleClientType | undefined;
 }
 
-const db = global.drizzleGlobal ?? createDbClient(env.POSTGRES_URL);
+const db = global.drizzleGlobal ?? createDbClient(env.DATABASE_URL);
 
 export { db };
 

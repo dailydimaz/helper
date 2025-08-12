@@ -5,28 +5,40 @@ import { db, Transaction } from "@/db/client";
 import { files } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { createAdminClient } from "@/lib/supabase/server";
+import { storeFile, retrieveFile, deleteFiles as deleteStorageFiles, generateStoragePath, initializeStorage } from "@/lib/files/storage";
+import { createSignedUrl, sanitizeContentType } from "@/lib/files/security";
+import { env } from "@/lib/env";
 
-export const PUBLIC_BUCKET_NAME = "public-uploads";
-export const PRIVATE_BUCKET_NAME = "private-uploads";
+// Storage paths for organizing files
+export const ATTACHMENTS_PATH = "attachments";
+export const PREVIEWS_PATH = "previews";
+export const INLINE_PATH = "inline";
 
 const MAX_KEYS_PER_DELETE = 1000;
 
 export const getFileUrl = async (file: typeof files.$inferSelect, { preview = false }: { preview?: boolean } = {}) => {
-  const supabase = createAdminClient();
   const key = preview ? file.previewKey : file.key;
 
   if (!key) throw new Error(`File ${file.id} has no ${preview ? "preview key" : "key"}`);
 
   try {
     if (file.isPublic) {
-      const { data } = supabase.storage.from(PUBLIC_BUCKET_NAME).getPublicUrl(key);
-      return data.publicUrl;
+      // For public files, return direct URL to our file serving endpoint
+      return `${env.NEXTAUTH_URL}/api/files/public/${encodeURIComponent(key)}`;
     }
 
-    const { data, error } = await supabase.storage.from(PRIVATE_BUCKET_NAME).createSignedUrl(key, 60 * 60 * 24 * 30);
-    if (error) throw error;
-    return data.signedUrl;
+    // For private files, create a signed URL
+    const token = await createSignedUrl({
+      fileId: file.id,
+      slug: file.slug,
+      isPublic: file.isPublic,
+      purpose: preview ? "preview" : "download"
+    }, {
+      expiresIn: 60 * 60 * 24 * 30, // 30 days
+      purpose: preview ? "preview" : "download"
+    });
+    
+    return `${env.NEXTAUTH_URL}/api/files/${file.slug}?token=${token}`;
   } catch (e) {
     captureExceptionAndLog(e);
     return null;
@@ -53,16 +65,12 @@ export const formatAttachments = async (attachments: (typeof files.$inferSelect)
 };
 
 export const downloadFile = async (file: typeof files.$inferSelect) => {
-  const supabase = createAdminClient();
-  if (file.isPublic) {
-    const response = await fetch(supabase.storage.from(PUBLIC_BUCKET_NAME).getPublicUrl(file.key).data.publicUrl);
-    if (!response.ok) throw new Error(`Failed to download public file: ${file.key} (${response.statusText})`);
-    return response.bytes();
+  try {
+    const data = await retrieveFile(file.key, { isPublic: file.isPublic });
+    return data;
+  } catch (error) {
+    throw new Error(`Failed to download file: ${file.key} (${(error as Error).message})`);
   }
-
-  const { data, error } = await supabase.storage.from(PRIVATE_BUCKET_NAME).download(file.key);
-  if (error) throw error;
-  return data.bytes();
 };
 
 export const uploadFile = async (
@@ -70,17 +78,12 @@ export const uploadFile = async (
   data: Buffer,
   { mimetype, isPublic = false }: { mimetype?: string; isPublic?: boolean } = {},
 ) => {
-  const supabase = createAdminClient();
-  const { data: storedFile, error } = await supabase.storage
-    .from(isPublic ? PUBLIC_BUCKET_NAME : PRIVATE_BUCKET_NAME)
-    .upload(key, data, { contentType: mimetype });
-  if (error) throw error;
+  const storedFile = await storeFile(key, data, { mimetype, isPublic });
   return storedFile.path;
 };
 
 export const generateKey = (basePathParts: string[], fileName: string) => {
-  const sanitizedFileName = fileName.replace(/(^.*[\\/])|[^\w.-]/g, "_");
-  return [...basePathParts, crypto.randomUUID(), sanitizedFileName].join("/");
+  return generateStoragePath(basePathParts, fileName);
 };
 
 export const finishFileUpload = async (
@@ -140,19 +143,20 @@ export const createAndUploadFile = async ({
   messageId?: number;
   noteId?: number;
 }) => {
-  const supabase = createAdminClient();
+  // Initialize storage if needed
+  await initializeStorage();
+  
   const key = generateKey([prefix], fileName);
-  const { data: storedFile, error } = await supabase.storage.from(PRIVATE_BUCKET_NAME).upload(key, data, {
-    contentType: mimetype,
+  const storedFile = await storeFile(key, data, {
+    mimetype: sanitizeContentType(mimetype),
+    isPublic: false,
   });
-
-  if (error) throw error;
 
   const file = await db
     .insert(files)
     .values({
       name: fileName,
-      mimetype,
+      mimetype: sanitizeContentType(mimetype),
       size: data.length,
       isInline,
       isPublic: false,
@@ -171,11 +175,7 @@ export const createAndUploadFile = async ({
 };
 
 export const deleteFiles = async (keys: string[], isPublic: boolean) => {
-  const supabase = createAdminClient();
   for (const chunkKeys of chunk(keys, MAX_KEYS_PER_DELETE)) {
-    const { error } = await supabase.storage
-      .from(isPublic ? PUBLIC_BUCKET_NAME : PRIVATE_BUCKET_NAME)
-      .remove(chunkKeys);
-    if (error) throw error;
+    await deleteStorageFiles(chunkKeys, { isPublic });
   }
 };

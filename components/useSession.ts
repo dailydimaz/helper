@@ -1,12 +1,8 @@
-import { Session } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useUser } from "@/hooks/use-user";
 import { api } from "@/trpc/react";
 
-const supabase = createClient();
-
 export const useSession = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const { user: authUser, status } = useUser();
 
   const {
     data: user,
@@ -14,24 +10,15 @@ export const useSession = () => {
     error,
     refetch,
   } = api.user.currentUser.useQuery(undefined, {
-    enabled: !!session, // only fetch after session exists
+    enabled: status === "authenticated", // only fetch after authentication
     refetchOnWindowFocus: false,
   });
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      refetch();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return { session, user, isLoading, error, refetch };
+  return { 
+    session: authUser ? { user: authUser } : null, 
+    user, 
+    isLoading: status === "loading" || isLoading, 
+    error, 
+    refetch 
+  };
 };

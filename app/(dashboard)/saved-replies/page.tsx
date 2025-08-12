@@ -13,15 +13,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentTitle } from "@/components/useDocumentTitle";
 import { stripHtmlTags } from "@/components/utils/html";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useSavedReplies } from "@/hooks/use-saved-replies";
+import { useSearchParams, useRouter } from 'next/navigation';
 import { SavedReplyForm } from "./savedReplyForm";
 
-type SavedReply = RouterOutputs["mailbox"]["savedReplies"]["list"][number];
+type SavedReply = {
+  slug: string;
+  name: string;
+  content: string;
+  usageCount: number;
+};
 
 export default function SavedRepliesPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchParams.get('search') || '');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingSavedReply, setEditingSavedReply] = useState<SavedReply | null>(null);
 
@@ -31,28 +38,30 @@ export default function SavedRepliesPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      // Update URL params
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchTerm) {
+        params.set('search', searchTerm);
+      } else {
+        params.delete('search');
+      }
+      router.replace(`/saved-replies?${params.toString()}`, { scroll: false });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [searchTerm, router, searchParams]);
 
-  const {
-    data: savedReplies,
-    refetch,
-    isLoading,
-  } = api.mailbox.savedReplies.list.useQuery({
-    search: debouncedSearchTerm || undefined,
-  });
+  const { savedReplies, isLoading, mutate } = useSavedReplies();
 
   const handleCreateSuccess = () => {
     setShowCreateDialog(false);
-    refetch();
+    mutate();
     toast.success("Saved reply created successfully");
   };
 
   const handleEditSuccess = () => {
     setEditingSavedReply(null);
-    refetch();
+    mutate();
     toast.success("Saved reply updated successfully");
   };
 
@@ -66,7 +75,10 @@ export default function SavedRepliesPage() {
     }
   };
 
-  const filteredSavedReplies = savedReplies || [];
+  const filteredSavedReplies = savedReplies.filter((reply) => 
+    debouncedSearchTerm ? reply.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        reply.content.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) : true
+  );
   const hasRepliesOrSearch = filteredSavedReplies.length > 0 || searchTerm.length > 0;
 
   const searchInput = (
@@ -202,7 +214,7 @@ export default function SavedRepliesPage() {
                 onCancel={() => setEditingSavedReply(null)}
                 onDelete={() => {
                   setEditingSavedReply(null);
-                  refetch();
+                  mutate();
                 }}
               />
             </DialogContent>

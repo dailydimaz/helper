@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSelected } from "@/components/useSelected";
 import { useShiftSelected } from "@/components/useShiftSelected";
-import { conversationsListChannelId } from "@/lib/realtime/channels";
-import { useRealtimeEvent } from "@/lib/realtime/hooks";
+// Removed real-time imports - now using SWR polling
 import { generateSlug } from "@/lib/shared/slug";
-import { api } from "@/trpc/react";
+import { useConversationActions } from "@/hooks/use-conversations";
+import { useMailboxOpenCount } from "@/hooks/use-mailbox";
 import { useConversationsListInput } from "../shared/queries";
 import { ConversationFilters, useConversationFilters } from "./conversationFilters";
 import { useConversationListContext } from "./conversationListContext";
@@ -42,12 +42,8 @@ export const List = () => {
   const { filterValues, activeFilterCount, updateFilter, clearFilters } = useConversationFilters();
   const [allConversationsSelected, setAllConversationsSelected] = useState(false);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-  const utils = api.useUtils();
-  const { mutate: bulkUpdate } = api.mailbox.conversations.bulkUpdate.useMutation({
-    onError: (err) => {
-      toast.error("Failed to update conversations", { description: err.message });
-    },
-  });
+  const { bulkUpdateConversations } = useConversationActions();
+  const { mutate: mutateOpenCount } = useMailboxOpenCount();
 
   const conversations = conversationListData?.conversations ?? [];
   const defaultSort = conversationListData?.defaultSort;
@@ -82,7 +78,7 @@ export const List = () => {
     clearSelectedConversations();
   };
 
-  const handleBulkUpdate = (status: "open" | "closed" | "spam") => {
+  const handleBulkUpdate = async (status: "open" | "closed" | "spam") => {
     setIsBulkUpdating(true);
     try {
       const conversationFilter = allConversationsSelected
@@ -91,31 +87,20 @@ export const List = () => {
           : input
         : selectedConversations;
 
-      bulkUpdate(
-        {
-          conversationFilter,
-          status,
-        },
-        {
-          onSuccess: ({ updatedImmediately }) => {
-            setAllConversationsSelected(false);
-            clearSelectedConversations();
-            void utils.mailbox.conversations.list.invalidate();
-            void utils.mailbox.conversations.count.invalidate();
+      const result = await bulkUpdateConversations(conversationFilter, status);
+      
+      setAllConversationsSelected(false);
+      clearSelectedConversations();
+      mutateOpenCount();
+      
+      const ticketsText = allConversationsSelected
+        ? "All matching tickets"
+        : `${selectedConversations.length} ticket${selectedConversations.length === 1 ? "" : "s"}`;
 
-            if (updatedImmediately) {
-              const ticketsText = allConversationsSelected
-                ? "All matching tickets"
-                : `${selectedConversations.length} ticket${selectedConversations.length === 1 ? "" : "s"}`;
-
-              const actionText = status === "open" ? "reopened" : status === "closed" ? "closed" : "marked as spam";
-              toast.success(`${ticketsText} ${actionText}`);
-            } else {
-              toast.success("Starting update, refresh to see status.");
-            }
-          },
-        },
-      );
+      const actionText = status === "open" ? "reopened" : status === "closed" ? "closed" : "marked as spam";
+      toast.success(`${ticketsText} ${actionText}`);
+    } catch (error: any) {
+      toast.error("Failed to update conversations", { description: error.message });
     } finally {
       setIsBulkUpdating(false);
     }
@@ -148,66 +133,8 @@ export const List = () => {
     toggleAllConversations(false);
   }, [searchParams.status, clearSelectedConversations]);
 
-  useRealtimeEvent(conversationsListChannelId(), "conversation.new", (message) => {
-    const newConversation = message.data as ConversationItem;
-    if (newConversation.status !== (searchParams.status ?? "open")) return;
-    const sort = searchParams.sort ?? defaultSort;
-    if (!sort) return;
-
-    utils.mailbox.conversations.list.setInfiniteData(input, (data) => {
-      if (!data) return undefined;
-      const firstPage = data.pages[0];
-      if (!firstPage) return data;
-
-      switch (input.category) {
-        case "all":
-          break;
-        case "assigned":
-          if (!newConversation.assignedToId) return data;
-          break;
-        case "unassigned":
-          if (newConversation.assignedToId) return data;
-          break;
-        case "mine":
-          if (newConversation.assignedToId !== firstPage.assignedToIds?.[0]) return data;
-          break;
-      }
-
-      const existingConversationIndex = firstPage.conversations.findIndex(
-        (conversation) => conversation.slug === newConversation.slug,
-      );
-
-      const newConversations: ListItem[] = [...firstPage.conversations];
-      if (existingConversationIndex >= 0) newConversations.splice(existingConversationIndex, 1);
-
-      switch (sort) {
-        case "newest":
-          newConversations.unshift({ ...newConversation, isNew: true });
-          break;
-        case "oldest":
-          // Only add to first page if no other pages exist
-          if (data.pages.length === 1) {
-            newConversations.push({ ...newConversation, isNew: true });
-          }
-          break;
-        case "highest_value":
-          const indexToInsert =
-            existingConversationIndex >= 0
-              ? existingConversationIndex
-              : newConversations.findIndex(
-                  (c) => (c.platformCustomer?.value ?? 0) < (newConversation.platformCustomer?.value ?? 0),
-                );
-          if (indexToInsert < 0) return data;
-          newConversations.splice(indexToInsert, 0, { ...newConversation, isNew: true });
-          break;
-      }
-
-      return {
-        ...data,
-        pages: [{ ...firstPage, conversations: newConversations }, ...data.pages.slice(1)],
-      };
-    });
-  });
+  // Real-time updates are now handled by SWR polling in useInfiniteConversations
+  // No need for manual realtime event subscriptions
 
   const conversationsText = allConversationsSelected
     ? "all matching conversations"

@@ -48,23 +48,18 @@ export const env = createEnv({
     GOOGLE_PUBSUB_TOPIC_NAME: z.string().min(1).optional(), // Google PubSub for Gmail sync
     GOOGLE_PUBSUB_CLAIM_EMAIL: z.string().email().min(1).optional(),
 
-    // Set these when deploying if you're not using Vercel with the Supabase integration
-    AUTH_URL: z.string().url().default(defaultRootUrl), // The root URL of the app; legacy name which was required by next-auth
-    POSTGRES_URL: defaultUnlessDeployed(
+    // Database configuration for direct PostgreSQL connection
+    DATABASE_URL: defaultUnlessDeployed(
       z.string().url(),
-      `postgresql://postgres:postgres@127.0.0.1:${process.env.LOCAL_SUPABASE_DB_PORT}/postgres`,
+      `postgresql://postgres:postgres@127.0.0.1:5432/helperai_db`,
     ),
-    POSTGRES_URL_NON_POOLING: defaultUnlessDeployed(
-      z.string().url(),
-      // Same as POSTGRES_URL unless using Supabase with built-in pooling
-      `postgresql://postgres:postgres@127.0.0.1:${process.env.LOCAL_SUPABASE_DB_PORT}/postgres`,
+    
+    // JWT Authentication
+    JWT_SECRET: defaultUnlessDeployed(
+      z.string().min(32, "JWT secret must be at least 32 characters"),
+      "your-super-secure-development-jwt-secret-key-at-least-32-characters-long",
     ),
-    DATABASE_URL: z.string().url().optional(),
-    // Based on Supabase's default local development secret ("super-secret-jwt-token-with-at-least-32-characters-long")
-    SUPABASE_SERVICE_ROLE_KEY: defaultUnlessDeployed(
-      z.string().min(1),
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU",
-    ),
+    JWT_EXPIRES_IN: z.string().default("7d"),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).default("nodejs"),
 
     // Other optional integrations
@@ -117,12 +112,9 @@ export const env = createEnv({
    * For them to be exposed to the client, prefix them with `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_SUPABASE_URL: defaultUnlessDeployed(z.string().url().min(1), "https://supabase.helperai.dev"),
-    // Based on Supabase's default local development secret ("super-secret-jwt-token-with-at-least-32-characters-long")
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: defaultUnlessDeployed(
-      z.string().min(1),
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0",
-    ),
+    // Application URLs
+    NEXT_PUBLIC_APP_URL: z.string().url().default(defaultRootUrl),
+    NEXT_PUBLIC_API_URL: z.string().url().default(`${defaultRootUrl}/api`),
 
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(), // Sentry DSN for error tracking
 
@@ -137,8 +129,8 @@ export const env = createEnv({
     CI: process.env.CI,
     DISABLE_STRICT_MODE: process.env.DISABLE_STRICT_MODE,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_DEV_HOST: process.env.NEXT_PUBLIC_DEV_HOST,
   },
   skipValidation: process.env.npm_lifecycle_event === "lint" || process.env.NODE_ENV === "test",

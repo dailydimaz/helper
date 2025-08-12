@@ -33,7 +33,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { api } from "@/trpc/react";
+import { useMailboxOpenCount, useMailbox } from "@/hooks/use-mailbox";
+import { useCommonIssuesSettings } from "@/hooks/use-settings";
 
 declare global {
   interface Window {
@@ -56,9 +57,9 @@ export function AppSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const previousAppUrlRef = useRef<string | null>(null);
-  const { data: openCounts } = api.mailbox.openCount.useQuery();
-  const { data: mailbox } = api.mailbox.get.useQuery();
-  const { data: pinnedIssues, error: issueGroupsError } = api.mailbox.issueGroups.pinnedList.useQuery();
+  const { openCount } = useMailboxOpenCount();
+  const { mailbox } = useMailbox();
+  const { commonIssues: pinnedIssues, error: issueGroupsError } = useCommonIssuesSettings();
   const isSettingsPage = pathname.startsWith(`/settings`);
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -134,7 +135,7 @@ export function AppSidebar() {
                         <span className="group-data-[collapsible=icon]:hidden">Mine</span>
                       </Link>
                     </SidebarMenuButton>
-                    {openCounts && openCounts.mine > 0 && <SidebarMenuBadge>{openCounts.mine}</SidebarMenuBadge>}
+                    {openCount && openCount.mine > 0 && <SidebarMenuBadge>{openCount.mine}</SidebarMenuBadge>}
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={pathname === `/assigned`} tooltip="Assigned">
@@ -143,8 +144,8 @@ export function AppSidebar() {
                         <span className="group-data-[collapsible=icon]:hidden">Assigned</span>
                       </Link>
                     </SidebarMenuButton>
-                    {openCounts && openCounts.assigned > 0 && (
-                      <SidebarMenuBadge>{openCounts.assigned}</SidebarMenuBadge>
+                    {openCount && openCount.assigned > 0 && (
+                      <SidebarMenuBadge>{openCount.assigned}</SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -154,8 +155,8 @@ export function AppSidebar() {
                         <span className="group-data-[collapsible=icon]:hidden">Up for grabs</span>
                       </Link>
                     </SidebarMenuButton>
-                    {openCounts && openCounts.unassigned > 0 && (
-                      <SidebarMenuBadge>{openCounts.unassigned}</SidebarMenuBadge>
+                    {openCount && openCount.unassigned > 0 && (
+                      <SidebarMenuBadge>{openCount.unassigned}</SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -165,7 +166,7 @@ export function AppSidebar() {
                         <span className="group-data-[collapsible=icon]:hidden">All</span>
                       </Link>
                     </SidebarMenuButton>
-                    {openCounts && openCounts.all > 0 && <SidebarMenuBadge>{openCounts.all}</SidebarMenuBadge>}
+                    {openCount && openCount.all > 0 && <SidebarMenuBadge>{openCount.all}</SidebarMenuBadge>}
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroup>
@@ -193,7 +194,7 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroup>
 
-              {!issueGroupsError && pinnedIssues && pinnedIssues.groups.length > 0 && (
+              {!issueGroupsError && pinnedIssues && pinnedIssues.length > 0 && (
                 <SidebarGroup>
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -201,7 +202,7 @@ export function AppSidebar() {
                         Pinned issues
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                    {pinnedIssues.groups.slice(0, 5).map((group) => (
+                    {pinnedIssues.slice(0, 5).map((group) => (
                       <SidebarMenuItem key={group.id}>
                         <SidebarMenuButton
                           asChild

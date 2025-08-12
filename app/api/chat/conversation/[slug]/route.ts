@@ -3,7 +3,7 @@ import { ConversationDetails, updateConversationBodySchema, UpdateConversationRe
 import { getCustomerFilter } from "@/app/api/chat/customerFilter";
 import { corsOptions, corsResponse, withWidgetAuth } from "@/app/api/widget/utils";
 import { db } from "@/db/client";
-import { conversationMessages, conversations, files } from "@/db/schema";
+import { conversationMessagesTable, conversationsTable, filesTable } from "@/db/schema";
 import { updateConversation } from "@/lib/data/conversation";
 import { serializeMessageForWidget } from "@/lib/data/conversationMessage";
 

@@ -3,7 +3,8 @@
 import { Paperclip, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ConversationDetails } from "@helperai/client";
-import { MessageContent, useCreateMessage, useRealtimeEvents } from "@helperai/react";
+import { MessageContent, useCreateMessage } from "@helperai/react";
+import { useRealtimeMessages } from "@/lib/swr/realtime-hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -49,13 +50,28 @@ export const ThreadView = ({ conversation }: { conversation: ConversationDetails
     },
   });
 
-  useRealtimeEvents(conversation.slug);
+  // Use SWR polling for real-time message updates
+  const { refresh: refreshMessages } = useRealtimeMessages(conversation.slug);
+  
+  // Refresh messages periodically to simulate real-time behavior
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshMessages();
+    }, 3000); // Refresh every 3 seconds
+    
+    return () => clearInterval(interval);
+  }, [refreshMessages]);
 
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [conversation.messages?.length]);
+  
+  // Manual refresh function for better UX
+  const handleRefresh = () => {
+    refreshMessages();
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -122,6 +138,16 @@ export const ThreadView = ({ conversation }: { conversation: ConversationDetails
           </div>
         )}
 
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-muted-foreground">Messages update automatically</span>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="text-sm text-primary hover:text-primary-foreground"
+          >
+            Refresh
+          </button>
+        </div>
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             placeholder="Type your message..."

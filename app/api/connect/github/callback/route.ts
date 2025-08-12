@@ -6,15 +6,12 @@ import { mailboxes } from "@/db/schema";
 import { getMailbox } from "@/lib/data/mailbox";
 import { listRepositories } from "@/lib/github/client";
 import { captureExceptionAndThrowIfDevelopment } from "@/lib/shared/sentry";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 
 export async function GET(request: NextRequest) {
   const installationId = request.nextUrl.searchParams.get("installation_id");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getLogin();
   if (!user) return NextResponse.redirect(`${getBaseUrl()}/login`);
 
   const mailbox = await getMailbox();

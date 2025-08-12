@@ -2,8 +2,8 @@ import { relations } from "drizzle-orm";
 import { bigint, boolean, index, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { encryptedField } from "../lib/encryptedField";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
-import { toolApis } from "./toolApis";
+import { mailboxesTable } from "./mailboxes";
+import { toolApisTable } from "./toolApis";
 
 type ToolAuthenticationMethod = "none" | "bearer_token";
 type ToolRequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -16,9 +16,9 @@ export type ToolParameter = {
 };
 type ToolParameters = ToolParameter[];
 type ToolHeaders = Record<string, string>;
-export type Tool = typeof tools.$inferSelect;
+export type Tool = typeof toolsTable.$inferSelect;
 
-export const tools = pgTable(
+export const toolsTable = pgTable(
   "tools",
   {
     ...withTimestamps,
@@ -49,13 +49,13 @@ export const tools = pgTable(
   ],
 ).enableRLS();
 
-export const toolsRelations = relations(tools, ({ one }) => ({
-  mailbox: one(mailboxes, {
-    fields: [tools.unused_mailboxId],
-    references: [mailboxes.id],
+export const toolsTableRelations = relations(toolsTable, ({ one }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [toolsTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
-  toolApi: one(toolApis, {
-    fields: [tools.toolApiId],
-    references: [toolApis.id],
+  toolApi: one(toolApisTable, {
+    fields: [toolsTable.toolApiId],
+    references: [toolApisTable.id],
   }),
 }));

@@ -1,7 +1,7 @@
 import { bigint, index, integer, jsonb, pgTable, text } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
 
-export const jobRuns = pgTable(
+export const jobRunsTable = pgTable(
   "job_runs",
   {
     ...withTimestamps,

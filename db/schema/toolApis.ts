@@ -2,10 +2,10 @@ import { relations } from "drizzle-orm";
 import { bigint, index, pgTable, text } from "drizzle-orm/pg-core";
 import { encryptedField } from "../lib/encryptedField";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
-import { tools } from "./tools";
+import { mailboxesTable } from "./mailboxes";
+import { toolsTable } from "./tools";
 
-const toolApis = pgTable(
+const toolApisTable = pgTable(
   "tool_apis",
   {
     ...withTimestamps,
@@ -22,13 +22,13 @@ const toolApis = pgTable(
   (table) => [index("tool_apis_mailbox_id_idx").on(table.unused_mailboxId)],
 ).enableRLS();
 
-export const toolApisRelations = relations(toolApis, ({ many, one }) => ({
-  tools: many(tools),
-  mailbox: one(mailboxes, {
-    fields: [toolApis.unused_mailboxId],
-    references: [mailboxes.id],
+export const toolApisTableRelations = relations(toolApisTable, ({ many, one }) => ({
+  tools: many(toolsTable),
+  mailbox: one(mailboxesTable, {
+    fields: [toolApisTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
 }));
 
-export { toolApis };
-export type ToolApi = typeof toolApis.$inferSelect;
+export { toolApisTable };
+export type ToolApi = typeof toolApisTable.$inferSelect;

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { ReadPageToolConfig } from "@helperai/sdk";
 import { corsOptions, corsResponse, withWidgetAuth } from "@/app/api/widget/utils";
 import { db } from "@/db/client";
-import { conversations } from "@/db/schema";
+import { conversationsTable } from "@/db/schema";
 import { createUserMessage, respondWithAI } from "@/lib/ai/chat";
 import {
   CHAT_CONVERSATION_SUBJECT,
@@ -15,7 +15,7 @@ import {
 import { publicConversationChannelId } from "@/lib/realtime/channels";
 import { publishToRealtime } from "@/lib/realtime/publish";
 import { validateAttachments } from "@/lib/shared/attachmentValidation";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 import { WidgetSessionPayload } from "@/lib/widgetSession";
 import { ToolRequestBody } from "@/packages/client/dist";
 
@@ -98,11 +98,8 @@ export const POST = withWidgetAuth(async ({ request }, { session, mailbox }) => 
     attachmentData,
   );
 
-  const supabase = await createClient();
-  let isHelperUser = false;
-  if ((await supabase.auth.getUser()).data.user?.id) {
-    isHelperUser = true;
-  }
+  const authUser = await getLogin();
+  const isHelperUser = Boolean(authUser);
 
   return await respondWithAI({
     conversation,
@@ -134,9 +131,9 @@ export const POST = withWidgetAuth(async ({ request }, { session, mailbox }) => 
       } else if (isPromptConversation && conversation.subject === CHAT_CONVERSATION_SUBJECT) {
         waitUntil(
           db
-            .update(conversations)
+            .update(conversationsTable)
             .set({ subject: message.content, subjectPlaintext: message.content })
-            .where(eq(conversations.id, conversation.id)),
+            .where(eq(conversationsTable.id, conversation.id)),
         );
       }
     },

@@ -2,9 +2,9 @@ import { eq, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { db } from "@/db/client";
-import { BasicUserProfile, userProfiles } from "@/db/schema/userProfiles";
-import { authUsers } from "@/db/supabaseSchema/auth";
-import { createAdminClient } from "@/lib/supabase/server";
+import { usersTable } from "@/db/schema/users";
+import { BasicUserProfile, userProfilesTable } from "@/db/schema/userProfiles";
+import { createUserAdmin } from "@/lib/auth/adminActions";
 import { getFirstName, getFullName } from "../auth/authUtils";
 import { getSlackUser } from "../slack/client";
 
@@ -32,28 +32,26 @@ export type UserWithMailboxAccessData = {
 };
 
 export const getProfile = cache(
-  async (userId: string) => await db.query.userProfiles.findFirst({ where: eq(userProfiles.id, userId) }),
+  async (userId: string) => await db.query.userProfilesTable.findFirst({ where: eq(userProfilesTable.id, userId) }),
 );
 
 export const getBasicProfileById = cache(async (userId: string) => {
   const [user] = await db
-    .select({ id: userProfiles.id, displayName: userProfiles.displayName, email: authUsers.email })
-    .from(userProfiles)
-    .innerJoin(authUsers, eq(userProfiles.id, authUsers.id))
-    .where(eq(userProfiles.id, userId));
+    .select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
   return user ?? null;
 });
 
 export const getBasicProfileByEmail = cache(async (email: string) => {
   const [user] = await db
-    .select({ id: userProfiles.id, displayName: userProfiles.displayName, email: authUsers.email })
-    .from(userProfiles)
-    .innerJoin(authUsers, eq(userProfiles.id, authUsers.id))
-    .where(eq(authUsers.email, email));
+    .select({ id: usersTable.id, displayName: usersTable.displayName, email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
   return user ?? null;
 });
 
-export const isAdmin = (profile?: typeof userProfiles.$inferSelect) => profile?.permissions === "admin";
+export const isAdmin = (profile?: typeof usersTable.$inferSelect) => profile?.permissions === "admin";
 
 export const addUser = async (
   inviterUserId: string,
@@ -61,39 +59,39 @@ export const addUser = async (
   displayName: string,
   permission?: string,
 ) => {
-  const supabase = createAdminClient();
-  const { error } = await supabase.auth.admin.createUser({
+  const result = await createUserAdmin({
     email: emailAddress,
-    user_metadata: {
-      inviter_user_id: inviterUserId,
-      display_name: displayName,
-      permissions: permission ?? "member",
-    },
+    displayName,
+    permissions: permission ?? "member",
+    inviterUserId,
   });
-  if (error) throw error;
+  
+  // TODO: Send email with temporary password to user
+  // For now, return the temp password for manual distribution
+  return result;
 };
 
 export const banUser = async (userId: string) => {
   await db
-    .update(userProfiles)
+    .update(usersTable)
     .set({
       deletedAt: new Date(),
+      isActive: false,
     })
-    .where(eq(userProfiles.id, userId));
+    .where(eq(usersTable.id, userId));
 };
 
 export const getUsersWithMailboxAccess = async (): Promise<UserWithMailboxAccessData[]> => {
   const users = await db
     .select({
-      id: userProfiles.id,
-      email: authUsers.email,
-      displayName: userProfiles.displayName,
-      permissions: userProfiles.permissions,
-      access: userProfiles.access,
+      id: usersTable.id,
+      email: usersTable.email,
+      displayName: usersTable.displayName,
+      permissions: usersTable.permissions,
+      access: usersTable.access,
     })
-    .from(authUsers)
-    .innerJoin(userProfiles, eq(authUsers.id, userProfiles.id))
-    .where(isNull(userProfiles.deletedAt));
+    .from(usersTable)
+    .where(isNull(usersTable.deletedAt));
 
   return users.map((user) => {
     const access = user.access ?? { role: "afk", keywords: [] };
@@ -120,7 +118,7 @@ export const updateUserMailboxData = async (
   },
 ): Promise<UserWithMailboxAccessData> => {
   await db
-    .update(userProfiles)
+    .update(usersTable)
     .set({
       displayName: updates.displayName,
       access: {
@@ -129,21 +127,20 @@ export const updateUserMailboxData = async (
       },
       permissions: updates.permissions,
     })
-    .where(eq(userProfiles.id, userId));
+    .where(eq(usersTable.id, userId));
 
   const updatedProfile = await db
     .select({
-      id: userProfiles.id,
-      displayName: userProfiles.displayName,
-      access: userProfiles.access,
-      permissions: userProfiles.permissions,
-      createdAt: userProfiles.createdAt,
-      updatedAt: userProfiles.updatedAt,
-      email: authUsers.email,
+      id: usersTable.id,
+      displayName: usersTable.displayName,
+      access: usersTable.access,
+      permissions: usersTable.permissions,
+      createdAt: usersTable.createdAt,
+      updatedAt: usersTable.updatedAt,
+      email: usersTable.email,
     })
-    .from(userProfiles)
-    .innerJoin(authUsers, eq(userProfiles.id, authUsers.id))
-    .where(eq(userProfiles.id, userId))
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
     .then(takeUniqueOrThrow);
 
   return {

@@ -8,8 +8,7 @@ import { StandaloneDisplayIntegration } from "@/app/(dashboard)/standaloneDispla
 import { SentryContext } from "@/components/sentryContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { TRPCReactProvider } from "@/trpc/react";
-import { HydrateClient } from "@/trpc/server";
+import { AppContextProvider } from "@/hooks/use-app";
 
 export const metadata: Metadata = {
   title: "Helper",
@@ -37,22 +36,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <NuqsAdapter>
       <Toaster richColors />
-      <TRPCReactProvider>
+      <AppContextProvider basePath="">
         <StandaloneDisplayIntegration />
-        <HydrateClient>
-          <SentryContext />
-          <SidebarProvider>
-            <InboxClientLayout>
-              <div className="flex h-svh w-full">
-                <Suspense>
-                  <AppSidebar />
-                </Suspense>
-                <main className="flex-1 min-w-0">{children}</main>
-              </div>
-            </InboxClientLayout>
-          </SidebarProvider>
-        </HydrateClient>
-      </TRPCReactProvider>
+        <SentryContext />
+        <SidebarProvider>
+          <InboxClientLayout>
+            <div className="flex h-svh w-full">
+              <Suspense>
+                <AppSidebar />
+              </Suspense>
+              <main className="flex-1 min-w-0">{children}</main>
+            </div>
+          </InboxClientLayout>
+        </SidebarProvider>
+      </AppContextProvider>
     </NuqsAdapter>
   );
 }

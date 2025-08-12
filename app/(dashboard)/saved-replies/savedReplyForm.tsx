@@ -10,7 +10,7 @@ import TipTapEditor, { type TipTapEditorRef } from "@/components/tiptap/editor";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { api } from "@/trpc/react";
+import { useSavedReplyActions } from "@/hooks/use-saved-replies";
 
 type SavedReply = {
   slug: string;
@@ -62,51 +62,47 @@ export function SavedReplyForm({ savedReply, onSuccess, onCancel, onDelete }: Sa
     onError: handleError,
   });
 
-  const createSavedReply = api.mailbox.savedReplies.create.useMutation({
-    onSuccess: () => {
-      onSuccess();
-      form.reset();
-      setInitialContentObject({ content: "" });
-    },
-    onError: (error) => {
-      toast.error("Failed to create saved reply", { description: error.message });
-    },
-  });
+  const { createSavedReply, updateSavedReply, deleteSavedReply } = useSavedReplyActions();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const updateSavedReply = api.mailbox.savedReplies.update.useMutation({
-    onSuccess: () => {
-      onSuccess();
-    },
-    onError: (error) => {
-      toast.error("Failed to update saved reply", { description: error.message });
-    },
-  });
-
-  const deleteSavedReply = api.mailbox.savedReplies.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Saved reply deleted successfully");
-      onDelete?.();
-    },
-    onError: (error) => {
-      toast.error("Failed to delete saved reply", { description: error.message });
-    },
-  });
-
-  const onSubmit = (data: { name: string; content: string }) => {
+  const onSubmit = async (data: { name: string; content: string }) => {
     const finalData = {
       ...data,
     };
 
-    if (savedReply) {
-      updateSavedReply.mutate({ slug: savedReply.slug, ...finalData });
-    } else {
-      createSavedReply.mutate(finalData);
+    setIsSubmitting(true);
+    try {
+      if (savedReply) {
+        await updateSavedReply(savedReply.slug, finalData);
+      } else {
+        await createSavedReply(finalData);
+      }
+      onSuccess();
+      if (!savedReply) {
+        form.reset();
+        setInitialContentObject({ content: "" });
+      }
+    } catch (error: any) {
+      const action = savedReply ? "update" : "create";
+      toast.error(`Failed to ${action} saved reply`, { description: error.message });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = () => {
-    if (savedReply) {
-      deleteSavedReply.mutate({ slug: savedReply.slug });
+  const handleDelete = async () => {
+    if (!savedReply) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteSavedReply(savedReply.slug);
+      toast.success("Saved reply deleted successfully");
+      onDelete?.();
+    } catch (error: any) {
+      toast.error("Failed to delete saved reply", { description: error.message });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -166,8 +162,8 @@ export function SavedReplyForm({ savedReply, onSuccess, onCancel, onDelete }: Sa
               message={`Are you sure you want to delete ${savedReply.name}? This action cannot be undone.`}
               onConfirm={handleDelete}
             >
-              <Button type="button" variant="destructive_outlined" disabled={deleteSavedReply.isPending}>
-                Delete
+              <Button type="button" variant="destructive_outlined" disabled={isDeleting}>
+                {isDeleting ? "Deleting..." : "Delete"}
               </Button>
             </ConfirmationDialog>
           ) : null}
@@ -176,8 +172,8 @@ export function SavedReplyForm({ savedReply, onSuccess, onCancel, onDelete }: Sa
             <Button type="button" variant="outlined" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createSavedReply.isPending || updateSavedReply.isPending}>
-              {createSavedReply.isPending || updateSavedReply.isPending ? "Saving..." : savedReply ? "Update" : "Add"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : savedReply ? "Update" : "Add"}
             </Button>
           </div>
         </div>

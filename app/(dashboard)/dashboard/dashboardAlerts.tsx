@@ -1,7 +1,7 @@
 import { Star, User } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/trpc/react";
+import { useDashboardAlerts } from "@/hooks/use-dashboard";
 
 const formatHours = (hours: number) => {
   if (hours % 24 === 0) {
@@ -36,7 +36,7 @@ const DashboardAlert = ({
 };
 
 export const DashboardAlerts = () => {
-  const { data, isLoading } = api.mailbox.conversations.alertCounts.useQuery();
+  const { alerts: data, isLoading } = useDashboardAlerts();
 
   if (isLoading)
     return (

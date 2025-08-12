@@ -7,29 +7,25 @@ import { SavingIndicator } from "@/components/savingIndicator";
 import { Input } from "@/components/ui/input";
 import { useDebouncedCallback } from "@/components/useDebouncedCallback";
 import { useOnChange } from "@/components/useOnChange";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useMailbox, useMailboxActions } from "@/hooks/use-mailbox";
 import SectionWrapper from "../sectionWrapper";
 
-const MailboxNameSetting = ({ mailbox }: { mailbox: RouterOutputs["mailbox"]["get"] }) => {
-  const [name, setName] = useState(mailbox.name);
+const MailboxNameSetting = ({ mailbox }: { mailbox: any }) => {
+  const [name, setName] = useState(mailbox?.name || '');
   const savingIndicator = useSavingIndicator();
-  const utils = api.useUtils();
+  const { mutate } = useMailbox();
+  const { updateMailbox } = useMailboxActions();
 
-  const { mutate: update } = api.mailbox.update.useMutation({
-    onSuccess: () => {
-      utils.mailbox.get.invalidate();
+  const save = useDebouncedCallback(async () => {
+    savingIndicator.setState("saving");
+    try {
+      await updateMailbox({ name });
+      await mutate();
       savingIndicator.setState("saved");
-    },
-    onError: (error) => {
+    } catch (error: any) {
       savingIndicator.setState("error");
       toast.error("Error updating preferences", { description: error.message });
-    },
-  });
-
-  const save = useDebouncedCallback(() => {
-    savingIndicator.setState("saving");
-    update({ name });
+    }
   }, 500);
 
   useOnChange(() => {

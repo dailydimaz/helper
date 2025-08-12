@@ -1,13 +1,13 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversationMessages } from "./conversationMessages";
-import { conversations } from "./conversations";
-import { platformCustomers } from "./platformCustomers";
+import { conversationMessagesTable } from "./conversationMessages";
+import { conversationsTable } from "./conversations";
+import { platformCustomersTable } from "./platformCustomers";
 
 export type NotificationStatus = "pending" | "sent" | "read" | "dismissed";
 
-export const messageNotifications = pgTable(
+export const messageNotificationsTable = pgTable(
   "message_notifications",
   {
     ...withTimestamps,
@@ -28,17 +28,17 @@ export const messageNotifications = pgTable(
   ],
 ).enableRLS();
 
-export const messageNotificationRelations = relations(messageNotifications, ({ one }) => ({
-  message: one(conversationMessages, {
-    fields: [messageNotifications.messageId],
-    references: [conversationMessages.id],
+export const messageNotificationsTableRelations = relations(messageNotificationsTable, ({ one }) => ({
+  message: one(conversationMessagesTable, {
+    fields: [messageNotificationsTable.messageId],
+    references: [conversationMessagesTable.id],
   }),
-  conversation: one(conversations, {
-    fields: [messageNotifications.conversationId],
-    references: [conversations.id],
+  conversation: one(conversationsTable, {
+    fields: [messageNotificationsTable.conversationId],
+    references: [conversationsTable.id],
   }),
-  platformCustomer: one(platformCustomers, {
-    fields: [messageNotifications.platformCustomerId],
-    references: [platformCustomers.email],
+  platformCustomer: one(platformCustomersTable, {
+    fields: [messageNotificationsTable.platformCustomerId],
+    references: [platformCustomersTable.email],
   }),
 }));

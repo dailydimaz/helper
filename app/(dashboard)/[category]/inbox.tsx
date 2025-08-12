@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/pageHeader";
 import { useDocumentTitle } from "@/components/useDocumentTitle";
 import useKeyboardShortcut from "@/components/useKeyboardShortcut";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
+import { useConversation } from "@/hooks/use-conversations";
 
 const CATEGORY_LABELS = {
   all: "All",
@@ -43,9 +43,8 @@ const Inbox = () => {
   useKeyboardShortcut("j", moveToNextConversation);
   useKeyboardShortcut("k", moveToPreviousConversation);
 
-  const utils = api.useUtils();
   const isMobile = useIsMobile();
-  const { data: currentConversation } = useConversationQuery(currentConversationSlug) ?? {};
+  const { conversation: currentConversation } = useConversationQuery(currentConversationSlug) ?? {};
   const pageTitle = currentConversation
     ? `${currentConversation.subject} - ${currentConversation.emailFrom ?? "Anonymous"}`
     : CATEGORY_LABELS[params.category];
@@ -54,16 +53,17 @@ const Inbox = () => {
 
   const currentConversationIndex =
     conversationListData?.conversations.findIndex((c) => c.slug === currentConversationSlug) ?? -1;
+  
+  // TODO: Implement prefetching with SWR
   const prefetchNextConversations = (prefetchCount: number) => {
     if (currentConversationIndex === -1) return;
     const nextConversations = conversationListData?.conversations.slice(
       currentConversationIndex + 1,
       currentConversationIndex + 1 + prefetchCount,
     );
-    void Promise.all(
-      (nextConversations ?? []).map((c) => utils.mailbox.conversations.get.ensureData({ conversationSlug: c.slug })),
-    );
+    // Prefetching logic to be implemented with SWR
   };
+  
   useEffect(() => {
     if (!isPending) prefetchNextConversations(3);
   }, [isPending, currentConversationSlug]);

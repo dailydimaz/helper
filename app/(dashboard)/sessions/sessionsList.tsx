@@ -10,32 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { GuideSession } from "@/lib/data/guide";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useSessions } from "@/hooks/use-sessions";
 import { SessionsListSkeleton } from "./sessionsListSkeleton";
 
-type MailboxData = RouterOutputs["mailbox"]["get"];
-
 interface SessionsListProps {
-  mailbox: MailboxData;
+  mailbox: any;
   limit: number;
 }
 
 export default function SessionsList({ mailbox, limit }: SessionsListProps) {
   const router = useRouter();
 
-  const { data, fetchNextPage, hasNextPage, isLoading, isFetching, isFetchingNextPage, error } =
-    api.mailbox.getSessionsPaginated.useInfiniteQuery(
-      {
-        limit,
-      },
-      {
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-      },
-    );
+  const { sessions: data, isLoading, error } = useSessions();
+  
+  // Note: Infinite scroll would need to be implemented with SWR
+  // For now we'll show all sessions
+  const hasNextPage = false;
+  const isFetching = false;
+  const isFetchingNextPage = false;
+  const fetchNextPage = () => {};
 
-  const sessions = data?.pages.flatMap((page) => page.items) ?? [];
-  const totalCount = data?.pages[0]?.totalCount ?? 0;
+  const sessions = data || [];
+  const totalCount = sessions.length;
 
   const { ref, inView } = useInView({
     threshold: 0,

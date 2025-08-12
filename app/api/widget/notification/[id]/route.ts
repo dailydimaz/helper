@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { messageNotifications, platformCustomers } from "@/db/schema";
+import { messageNotificationsTable, platformCustomersTable } from "@/db/schema";
 import { corsOptions, corsResponse, withWidgetAuth } from "../../utils";
 
 const updateNotificationSchema = z.object({

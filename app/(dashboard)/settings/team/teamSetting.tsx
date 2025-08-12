@@ -5,15 +5,14 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSession } from "@/components/useSession";
-import { api } from "@/trpc/react";
+import { useMembers } from "@/hooks/use-members";
 import SectionWrapper from "../sectionWrapper";
 import { AddMember } from "./addMember";
 import TeamMemberRow, { ROLE_DISPLAY_NAMES } from "./teamMemberRow";
 import { TeamSettingLoadingSkeleton } from "./teamSettingLoadingSkeleton";
 
 const TeamSetting = () => {
-  const { data, isLoading } = api.mailbox.members.list.useQuery();
-  const teamMembers = data?.members ?? [];
+  const { members: teamMembers, isLoading } = useMembers();
   const [searchTerm, setSearchTerm] = useState("");
   const { user } = useSession();
 

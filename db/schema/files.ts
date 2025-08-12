@@ -2,10 +2,10 @@ import { relations } from "drizzle-orm";
 import { bigint, boolean, index, integer, pgTable, text, unique } from "drizzle-orm/pg-core";
 import { randomSlugField } from "../lib/random-slug-field";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversationMessages } from "./conversationMessages";
-import { notes } from "./notes";
+import { conversationMessagesTable } from "./conversationMessages";
+import { notesTable } from "./notes";
 
-export const files = pgTable(
+export const filesTable = pgTable(
   "conversations_file",
   {
     ...withTimestamps,
@@ -29,13 +29,13 @@ export const files = pgTable(
   ],
 ).enableRLS();
 
-export const filesRelations = relations(files, ({ one }) => ({
-  message: one(conversationMessages, {
-    fields: [files.messageId],
-    references: [conversationMessages.id],
+export const filesTableRelations = relations(filesTable, ({ one }) => ({
+  message: one(conversationMessagesTable, {
+    fields: [filesTable.messageId],
+    references: [conversationMessagesTable.id],
   }),
-  note: one(notes, {
-    fields: [files.noteId],
-    references: [notes.id],
+  note: one(notesTable, {
+    fields: [filesTable.noteId],
+    references: [notesTable.id],
   }),
 }));

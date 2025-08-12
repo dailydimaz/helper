@@ -10,7 +10,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { api } from "@/trpc/react";
+import { useDashboardStatusByType } from "@/hooks/use-dashboard";
 import { type TimeRange } from "./dashboardContent";
 
 const COLORS = {
@@ -42,10 +42,11 @@ interface StatusByTypeChartProps {
 export function StatusByTypeChart({ timeRange, customDate }: StatusByTypeChartProps) {
   const { startDate, endDate } = useMemo(() => timeRangeToQuery(timeRange, customDate), [timeRange, customDate]);
 
-  const { data, isLoading } = api.mailbox.conversations.messages.statusByTypeCount.useQuery({
+  const { statusData: data, isLoading } = useDashboardStatusByType(
+    timeRange === "custom" ? "24h" : timeRange,
     startDate,
-    endDate,
-  });
+    endDate
+  );
 
   if (isLoading || !data) {
     return (

@@ -17,12 +17,14 @@ import { Button } from "@/components/ui/button";
 import { useBreakpoint } from "@/components/useBreakpoint";
 import useKeyboardShortcut from "@/components/useKeyboardShortcut";
 import { parseEmailList } from "@/components/utils/email";
-import { publicConversationChannelId } from "@/lib/realtime/channels";
-import { useBroadcastRealtimeEvent } from "@/lib/realtime/hooks";
+import { useRealtimePresence, useSendMessage } from "@/lib/swr/realtime-hooks";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { cn } from "@/lib/utils";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import { useConversationActions } from "@/hooks/use-conversations";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
+import useSWR from "swr";
 import { useConversationListContext } from "../list/conversationListContext";
 import { useConversationsListInput } from "../shared/queries";
 import { TicketCommandBar } from "../ticketCommandBar";
@@ -55,39 +57,53 @@ export const MessageActions = () => {
   const { navigateToConversation, removeConversation } = useConversationListContext();
   const { data: conversation, updateStatus } = useConversationContext();
   const { searchParams } = useConversationsListInput();
-  const utils = api.useUtils();
+  const api = useApi();
+  const { updateConversation } = useConversationActions();
   const { isAboveMd } = useBreakpoint("md");
 
-  const broadcastEvent = useBroadcastRealtimeEvent();
+  // Use SWR for optimistic message sending and presence updates
+  const { sendMessage, isSending: isSendingMessage } = useSendMessage(conversation?.slug || "");
+  const { refresh: refreshPresence } = useRealtimePresence(
+    conversation?.slug ? `conversation-${conversation.slug}-agents` : ""
+  );
+  
   const lastTypingBroadcastRef = useRef<number>(0);
 
   const handleTypingEvent = useCallback(
     (conversationSlug: string) => {
       const now = Date.now();
+      // Update agent presence to indicate typing (optimistic update)
       if (now - lastTypingBroadcastRef.current >= 8000) {
-        broadcastEvent(publicConversationChannelId(conversationSlug), "agent-typing", {
-          timestamp: now,
-        });
+        // Instead of broadcasting, update presence to indicate agent activity
+        refreshPresence();
         lastTypingBroadcastRef.current = now;
       }
     },
-    [broadcastEvent],
+    [refreshPresence],
   );
 
-  const { data: mailboxPreferences } = api.mailbox.get.useQuery();
+  const { data: mailboxPreferences } = useSWR("/mailbox");
 
   const triggerMailboxConfetti = () => {
     if (!mailboxPreferences?.preferences?.confetti) return;
     triggerConfetti();
   };
 
-  const replyMutation = api.mailbox.conversations.messages.reply.useMutation({
-    onSuccess: async (_, variables) => {
-      await utils.mailbox.conversations.get.invalidate({
-        conversationSlug: variables.conversationSlug,
-      });
-    },
-  });
+  const sendReply = async (data: {
+    conversationSlug: string;
+    message: string;
+    fileSlugs: string[];
+    cc: string[];
+    bcc: string[];
+    shouldAutoAssign: boolean;
+    shouldClose: boolean;
+    responseToId: number | null;
+  }) => {
+    const result = await api.post(`/conversations/${data.conversationSlug}/messages/reply`, data);
+    // Invalidate conversation data
+    await mutate(key => typeof key === 'string' && key.includes(`/conversations/${data.conversationSlug}`));
+    return result;
+  };
 
   useKeyboardShortcut("z", () => {
     if (conversation?.status === "closed" || conversation?.status === "spam") {
@@ -111,7 +127,7 @@ export const MessageActions = () => {
   });
 
   const initialMessage = conversation?.draft?.body ?? "";
-  const generateInitialDraftedEmail = (conversation: RouterOutputs["mailbox"]["conversations"]["get"] | null) => {
+  const generateInitialDraftedEmail = (conversation: any) => {
     return {
       cc: conversation?.cc ?? "",
       bcc: "",
@@ -244,7 +260,7 @@ export const MessageActions = () => {
         ?.filter((m) => m.type === "message" && m.role === "user")
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
-      const { id: emailId } = await replyMutation.mutateAsync({
+      const { id: emailId } = await sendReply({
         conversationSlug,
         message: draftedEmail.message,
         fileSlugs: readyFiles.flatMap((f) => (f.slug ? [f.slug] : [])),
@@ -275,8 +291,7 @@ export const MessageActions = () => {
       if (conversation.status === "open" && close) {
         try {
           // Use direct update to avoid redundant toast since we're already showing "Replied and closed"
-          await utils.client.mailbox.conversations.update.mutate({
-            conversationSlug,
+          await api.put(`/conversations/${conversationSlug}`, {
             status: "closed",
           });
           // Remove conversation from list and move to next
@@ -284,8 +299,13 @@ export const MessageActions = () => {
           if (!assign) shouldTriggerConfetti = true;
         } catch (error) {
           captureExceptionAndLog(error);
-          toast.error("Message sent but failed to close conversation", {
-            description: "The message was sent successfully, but there was an error closing the conversation.",
+          handleApiErr(error, {
+            onError: (message) => {
+              toast.error("Message sent but failed to close conversation", {
+                description: message || "The message was sent successfully, but there was an error closing the conversation.",
+              });
+              return true; // Handled
+            }
           });
         }
       }
@@ -320,19 +340,23 @@ export const MessageActions = () => {
               className="text-xs px-2 py-1 text-foreground underline hover:no-underline"
               onClick={async () => {
                 try {
-                  await utils.client.mailbox.conversations.undo.mutate({
-                    conversationSlug,
+                  await api.post(`/conversations/${conversationSlug}/undo`, {
                     emailId,
                   });
                   setUndoneEmail(originalDraftedEmail);
                   toast.success("Message unsent");
                 } catch (e) {
                   captureExceptionAndLog(e);
-                  toast.error("Failed to unsend email", {
-                    description: e instanceof Error ? e.message : "Unknown error",
+                  handleApiErr(e, {
+                    onError: (message) => {
+                      toast.error("Failed to unsend email", {
+                        description: message || "Unknown error",
+                      });
+                      return true; // Handled
+                    }
                   });
                 } finally {
-                  utils.mailbox.conversations.get.invalidate({ conversationSlug });
+                  await mutate(key => typeof key === 'string' && key.includes(`/conversations/${conversationSlug}`));
                   navigateToConversation(conversation.slug);
                 }
               }}
@@ -344,7 +368,12 @@ export const MessageActions = () => {
       });
     } catch (error) {
       captureExceptionAndLog(error);
-      toast.error("Error submitting message");
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error(message || "Error submitting message");
+          return true; // Handled
+        }
+      });
     } finally {
       setSending(false);
     }

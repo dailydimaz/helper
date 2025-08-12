@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray } from "drizzle-orm";
-import { ToolRequestBody } from "@helperai/client";
+import type { ToolRequestBody } from "@helperai/client";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
 import { conversationMessages, conversations } from "@/db/schema";

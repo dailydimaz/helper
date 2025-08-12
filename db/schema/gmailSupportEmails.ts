@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, integer, pgTable, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 import { encryptedField } from "@/db/lib/encryptedField";
-import { mailboxes } from "@/db/schema/mailboxes";
+import { mailboxesTable } from "@/db/schema/mailboxes";
 import { withTimestamps } from "../lib/with-timestamps";
 
-export const gmailSupportEmails = pgTable(
+export const gmailSupportEmailsTable = pgTable(
   "mailboxes_gmailsupportemail",
   {
     ...withTimestamps,
@@ -25,6 +25,6 @@ export const gmailSupportEmails = pgTable(
   ],
 ).enableRLS();
 
-export const gmailSupportEmailsRelations = relations(gmailSupportEmails, ({ many }) => ({
-  mailboxes: many(mailboxes),
+export const gmailSupportEmailsTableRelations = relations(gmailSupportEmailsTable, ({ many }) => ({
+  mailboxes: many(mailboxesTable),
 }));

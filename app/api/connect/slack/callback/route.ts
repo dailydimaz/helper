@@ -6,16 +6,11 @@ import { db } from "@/db/client";
 import { mailboxes } from "@/db/schema";
 import { getMailbox } from "@/lib/data/mailbox";
 import { getSlackAccessToken } from "@/lib/slack/client";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error) throw error;
+    const user = await getLogin();
     if (!user) return NextResponse.redirect(new URL("/login", request.url));
 
     const searchParams = request.nextUrl.searchParams;

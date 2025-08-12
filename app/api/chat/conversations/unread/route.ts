@@ -3,7 +3,7 @@ import { UnreadConversationsCountResult } from "@helperai/client";
 import { getCustomerFilter } from "@/app/api/chat/customerFilter";
 import { corsOptions, corsResponse, withWidgetAuth } from "@/app/api/widget/utils";
 import { db } from "@/db/client";
-import { conversationMessages, conversations } from "@/db/schema";
+import { conversationMessagesTable, conversationsTable } from "@/db/schema";
 
 export const OPTIONS = () => corsOptions("GET");
 

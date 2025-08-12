@@ -5,8 +5,9 @@ import { z } from "zod";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { db } from "@/db/client";
 import { files } from "@/db/schema";
-import { generateKey, getFileUrl, PRIVATE_BUCKET_NAME, PUBLIC_BUCKET_NAME } from "@/lib/data/files";
-import { createAdminClient } from "@/lib/supabase/server";
+import { generateKey, getFileUrl, ATTACHMENTS_PATH, INLINE_PATH } from "@/lib/data/files";
+import { createTempDownloadToken } from "@/lib/files/security";
+import { initializeStorage } from "@/lib/files/storage";
 import { protectedProcedure } from "@/trpc/trpc";
 
 export const filesRouter = {
@@ -31,16 +32,16 @@ export const filesRouter = {
           // the new conversation modal conversation won't exist yet (and its slug is generated on the frontend).
           conversationSlug: unauthorizedConversationSlug,
         },
+        ctx: { user },
       }) => {
+        // Initialize storage
+        await initializeStorage();
+        
         const isPublic = isInline;
         const contentType = mime.getType(fileName) ?? "application/octet-stream";
-        const bucket = isPublic ? PUBLIC_BUCKET_NAME : PRIVATE_BUCKET_NAME;
-
-        const supabase = createAdminClient();
-        const key = generateKey(["attachments", unauthorizedConversationSlug], fileName);
-
-        const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(key);
-        if (error) throw error;
+        
+        const basePath = isInline ? INLINE_PATH : ATTACHMENTS_PATH;
+        const key = generateKey([basePath, unauthorizedConversationSlug], fileName);
 
         const fileRecord = await db
           .insert(files)
@@ -55,6 +56,9 @@ export const filesRouter = {
           .returning()
           .then(takeUniqueOrThrow);
 
+        // Create a temporary upload token
+        const uploadToken = await createTempDownloadToken(fileRecord.slug, user.id, 60); // 60 minutes
+
         return {
           file: {
             slug: fileRecord.slug,
@@ -62,8 +66,8 @@ export const filesRouter = {
             key: fileRecord.key,
           },
           isPublic,
-          bucket,
-          signedUpload: data,
+          uploadToken,
+          uploadUrl: `/api/files/upload/${fileRecord.slug}`,
         };
       },
     ),

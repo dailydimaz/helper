@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, jsonb, pgTable, text, timestamp, varchar, vector } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
+import { mailboxesTable } from "./mailboxes";
 
 export interface CrawlMetadata {
   crawlIdentifier?: string;
@@ -11,7 +11,7 @@ export interface CrawlMetadata {
   creditsUsed?: number;
 }
 
-export const websites = pgTable(
+export const websitesTable = pgTable(
   "website_docs",
   {
     ...withTimestamps,
@@ -30,7 +30,7 @@ export const websites = pgTable(
   ],
 ).enableRLS();
 
-export const websitePages = pgTable(
+export const websitePagesTable = pgTable(
   "website_docs_pages",
   {
     ...withTimestamps,
@@ -54,7 +54,7 @@ export const websitePages = pgTable(
   ],
 ).enableRLS();
 
-export const websiteCrawls = pgTable(
+export const websiteCrawlsTable = pgTable(
   "website_docs_crawls",
   {
     ...withTimestamps,
@@ -74,29 +74,29 @@ export const websiteCrawls = pgTable(
   ],
 ).enableRLS();
 
-export const websitesRelations = relations(websites, ({ one, many }) => ({
-  mailbox: one(mailboxes, {
-    fields: [websites.unused_mailboxId],
-    references: [mailboxes.id],
+export const websitesTableRelations = relations(websitesTable, ({ one, many }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [websitesTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
-  pages: many(websitePages),
-  crawls: many(websiteCrawls),
+  pages: many(websitePagesTable),
+  crawls: many(websiteCrawlsTable),
 }));
 
-export const websitePagesRelations = relations(websitePages, ({ one }) => ({
-  website: one(websites, {
-    fields: [websitePages.websiteId],
-    references: [websites.id],
+export const websitePagesTableRelations = relations(websitePagesTable, ({ one }) => ({
+  website: one(websitesTable, {
+    fields: [websitePagesTable.websiteId],
+    references: [websitesTable.id],
   }),
-  crawl: one(websiteCrawls, {
-    fields: [websitePages.websiteCrawlId],
-    references: [websiteCrawls.id],
+  crawl: one(websiteCrawlsTable, {
+    fields: [websitePagesTable.websiteCrawlId],
+    references: [websiteCrawlsTable.id],
   }),
 }));
 
-export const websiteCrawlsRelations = relations(websiteCrawls, ({ one }) => ({
-  website: one(websites, {
-    fields: [websiteCrawls.websiteId],
-    references: [websites.id],
+export const websiteCrawlsTableRelations = relations(websiteCrawlsTable, ({ one }) => ({
+  website: one(websitesTable, {
+    fields: [websiteCrawlsTable.websiteId],
+    references: [websitesTable.id],
   }),
 }));

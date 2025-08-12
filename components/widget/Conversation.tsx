@@ -13,8 +13,7 @@ import MessagesSkeleton from "@/components/widget/MessagesSkeleton";
 import SupportButtons from "@/components/widget/SupportButtons";
 import { useNewConversation } from "@/components/widget/useNewConversation";
 import { useWidgetView, View } from "@/components/widget/useWidgetView";
-import { publicConversationChannelId } from "@/lib/realtime/channels";
-import { DISABLED, useRealtimeEvent } from "@/lib/realtime/hooks";
+import { useRealtimeMessages, useRealtimePresence } from "@/lib/swr/realtime-hooks";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { sendConversationUpdate } from "@/lib/widget/messages";
 import { GuideInstructions } from "@/types/guide";
@@ -54,46 +53,48 @@ export default function Conversation({
   const [isProvidingDetails, setIsProvidingDetails] = useState(false);
   const { setIsNewConversation } = useWidgetView();
 
+  // Use SWR for agent presence/typing indicators
+  const { users: agentPresence } = useRealtimePresence(
+    selectedConversationSlug ? `conversation-${selectedConversationSlug}-agents` : ""
+  );
+  
+  // Use SWR polling for conversation messages
+  const { 
+    messages: realtimeMessages, 
+    addOptimisticMessage,
+    refresh: refreshMessages 
+  } = useRealtimeMessages(selectedConversationSlug || "");
+  
   const [isAgentTyping, setIsAgentTyping] = useState(false);
   const agentTypingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const previousRealtimeMessageCount = useRef(0);
 
-  useRealtimeEvent(
-    selectedConversationSlug ? publicConversationChannelId(selectedConversationSlug) : DISABLED,
-    "agent-typing",
-    () => {
-      setIsAgentTyping(true);
-
-      if (agentTypingTimeoutRef.current) clearTimeout(agentTypingTimeoutRef.current);
-      agentTypingTimeoutRef.current = setTimeout(() => setIsAgentTyping(false), 10000);
-    },
-  );
-
+  // Handle new messages from polling
   useEffect(() => {
-    return () => {
-      if (agentTypingTimeoutRef.current) clearTimeout(agentTypingTimeoutRef.current);
-    };
-  }, []);
+    if (realtimeMessages.length > previousRealtimeMessageCount.current) {
+      const newMessages = realtimeMessages.slice(previousRealtimeMessageCount.current);
+      
+      // Add new agent messages to the chat
+      newMessages.forEach((msg) => {
+        if (msg.type === "ai" || msg.type === "system") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `staff_${Date.now()}_${Math.random()}`,
+              role: "assistant",
+              content: msg.content,
+              createdAt: new Date(msg.createdAt),
+              reactionType: null,
+              reactionFeedback: null,
+              reactionCreatedAt: null,
+              annotations: msg.metadata?.staffName ? [{ user: { firstName: msg.metadata.staffName } }] : undefined,
+            },
+          ]);
+        }
+      });
 
-  useRealtimeEvent(
-    selectedConversationSlug ? publicConversationChannelId(selectedConversationSlug) : DISABLED,
-    "agent-reply",
-    (event) => {
-      setIsAgentTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `staff_${Date.now()}`,
-          role: "assistant",
-          content: event.data.content,
-          createdAt: new Date(event.data.createdAt),
-          reactionType: null,
-          reactionFeedback: null,
-          reactionCreatedAt: null,
-          annotations: event.data.staffName ? [{ user: { firstName: event.data.staffName } }] : undefined,
-        },
-      ]);
-
-      if (selectedConversationSlug && token) {
+      // Mark conversation as read if new messages arrive
+      if (selectedConversationSlug && token && newMessages.length > 0) {
         fetch(`/api/chat/conversation/${selectedConversationSlug}`, {
           method: "PATCH",
           body: JSON.stringify({ markRead: true }),
@@ -105,8 +106,28 @@ export default function Conversation({
           captureExceptionAndLog(error);
         });
       }
-    },
-  );
+    }
+    previousRealtimeMessageCount.current = realtimeMessages.length;
+  }, [realtimeMessages, selectedConversationSlug, token, setMessages]);
+
+  // Handle agent typing based on presence
+  useEffect(() => {
+    const hasActiveAgents = agentPresence.length > 0;
+    if (hasActiveAgents && !isAgentTyping) {
+      setIsAgentTyping(true);
+      if (agentTypingTimeoutRef.current) clearTimeout(agentTypingTimeoutRef.current);
+      agentTypingTimeoutRef.current = setTimeout(() => setIsAgentTyping(false), 10000);
+    } else if (!hasActiveAgents && isAgentTyping) {
+      setIsAgentTyping(false);
+      if (agentTypingTimeoutRef.current) clearTimeout(agentTypingTimeoutRef.current);
+    }
+  }, [agentPresence.length, isAgentTyping]);
+
+  useEffect(() => {
+    return () => {
+      if (agentTypingTimeoutRef.current) clearTimeout(agentTypingTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (conversationSlug) {

@@ -13,17 +13,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/components/useSession";
 import { getFullName } from "@/lib/auth/authUtils";
-import { createClient } from "@/lib/supabase/client";
-
-const supabase = createClient();
+import { apiClient } from "@/lib/client";
+import { toast } from "sonner";
 
 export function AccountDropdown() {
   const { user } = useSession() ?? {};
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    try {
+      await apiClient.post("/auth/logout");
+      toast.success("Signed out successfully");
+      router.push("/login");
+    } catch (error) {
+      toast.error("Error signing out");
+      router.push("/login"); // Still redirect even if API fails
+    }
   };
 
   if (!user) return null;

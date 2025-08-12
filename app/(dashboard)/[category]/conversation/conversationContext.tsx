@@ -3,31 +3,24 @@ import { toast } from "sonner";
 import { useConversationListContext } from "@/app/(dashboard)/[category]/list/conversationListContext";
 import { assertDefined } from "@/components/utils/assert";
 import { captureExceptionAndThrowIfDevelopment } from "@/lib/shared/sentry";
-import { RouterInputs, RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useConversation, useConversationActions } from "@/hooks/use-conversations";
+import { mutate } from "swr";
 
 type ConversationContextType = {
   conversationSlug: string;
-  data: RouterOutputs["mailbox"]["conversations"]["get"] | null;
+  data: any | null;
   isPending: boolean;
   error: { message: string } | null;
   refetch: () => void;
   updateStatus: (status: "closed" | "spam" | "open") => Promise<void>;
-  updateConversation: (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => Promise<void>;
+  updateConversation: (inputs: any) => Promise<void>;
   isUpdating: boolean;
 };
 
 const ConversationContext = createContext<ConversationContextType | null>(null);
 
 export function useConversationQuery(conversationSlug: string | null) {
-  const result = api.mailbox.conversations.get.useQuery(
-    {
-      conversationSlug: conversationSlug ?? "",
-    },
-    {
-      enabled: !!conversationSlug,
-    },
-  );
+  const result = useConversation(conversationSlug || "");
 
   return conversationSlug ? result : null;
 }
@@ -38,49 +31,21 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     currentConversationSlug,
     "ConversationContext can only be used when currentConversationSlug is defined",
   );
-  const { data = null, isPending, error, refetch } = assertDefined(useConversationQuery(currentConversationSlug));
+  const { conversation: data = null, isLoading: isPending, error, mutate: refetch } = assertDefined(useConversationQuery(currentConversationSlug));
 
-  const utils = api.useUtils();
-  const { mutateAsync: updateConversation, isPending: isUpdating } = api.mailbox.conversations.update.useMutation({
-    onMutate: (variables) => {
-      const previousData = utils.mailbox.conversations.get.getData({
-        conversationSlug: variables.conversationSlug,
-      });
+  const { updateConversation: updateConversationAction } = useConversationActions();
+  const isUpdating = false; // TODO: Add loading state management
 
-      if (previousData && variables.status) {
-        utils.mailbox.conversations.get.setData(
-          {
-            conversationSlug: variables.conversationSlug,
-          },
-          { ...previousData, status: variables.status },
-        );
-      }
-
-      return { previousData };
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousData) {
-        utils.mailbox.conversations.get.setData(
-          {
-            conversationSlug: variables.conversationSlug,
-          },
-          context.previousData,
-        );
-      }
-
+  const update = async (inputs: any) => {
+    try {
+      await updateConversationAction(conversationSlug, inputs);
+      await refetch();
+    } catch (error: any) {
       toast.error("Error updating conversation", {
         description: error.message,
       });
-    },
-    onSuccess: (_data, variables) => {
-      utils.mailbox.conversations.get.invalidate({
-        conversationSlug: variables.conversationSlug,
-      });
-    },
-  });
-
-  const update = async (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => {
-    await updateConversation({ conversationSlug, ...inputs });
+      throw error;
+    }
   };
 
   const updateStatus = useCallback(
@@ -140,7 +105,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         conversationSlug,
         data,
         isPending,
-        error,
+        error: error ? { message: error.message || 'An error occurred' } : null,
         refetch,
         updateStatus,
         updateConversation: update,

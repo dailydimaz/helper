@@ -17,7 +17,8 @@ import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
 import { indexConversationMessage } from "@/jobs/indexConversation";
 import { env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/server";
+// TODO: Replace with JWT auth based seeding
+// import { createAdminClient } from "@/lib/supabase/server";
 import { conversationMessages, conversations, mailboxesMetadataApi, userProfiles } from "../schema";
 
 const getTables = async () => {

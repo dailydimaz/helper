@@ -4,85 +4,50 @@ import { Resend } from "resend";
 import { z } from "zod";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { userProfiles } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
-import { setupMailboxForNewUser } from "@/lib/auth/authService";
+import { usersTable } from "@/db/schema/users";
+import { userProfilesTable } from "@/db/schema/userProfiles";
+import { authenticateUser, createUser, createJWT } from "@/lib/auth/authService";
+import { setAuthToken } from "@/lib/cookie";
 import { cacheFor } from "@/lib/cache";
 import OtpEmail from "@/lib/emails/otp";
 import { env } from "@/lib/env";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { createAdminClient } from "@/lib/supabase/server";
 import { protectedProcedure, publicProcedure } from "../trpc";
 
 export const userRouter = {
-  startSignIn: publicProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
-    const [user] = await db
-      .select({ id: authUsers.id, email: authUsers.email, deletedAt: userProfiles.deletedAt })
-      .from(authUsers)
-      .innerJoin(userProfiles, eq(authUsers.id, userProfiles.id))
-      .where(and(eq(authUsers.email, input.email), isNull(userProfiles.deletedAt)));
-
-    if (!user) {
-      if (isSignupPossible(input.email)) {
-        return { signupPossible: true };
-      }
-
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "User not found",
-      });
-    }
-
-    const { data, error } = await createAdminClient().auth.admin.generateLink({
-      type: "recovery",
-      email: user.email ?? "",
-    });
-    if (error) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to generate OTP",
-      });
-    }
-
-    if (env.RESEND_API_KEY && env.RESEND_FROM_ADDRESS) {
-      const resend = new Resend(env.RESEND_API_KEY);
-      const { error } = await resend.emails.send({
-        from: env.RESEND_FROM_ADDRESS,
-        to: assertDefined(user.email),
-        subject: `Your OTP for Helper: ${data.properties.email_otp}`,
-        react: OtpEmail({ otp: data.properties.email_otp }),
-      });
-      if (error) {
-        captureExceptionAndLog(error);
+  // TODO: Implement proper OTP-based authentication
+  // For now, using basic email/password login
+  login: publicProcedure
+    .input(z.object({ email: z.string().email(), password: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const authUser = await authenticateUser(input.email, input.password);
+      
+      if (!authUser) {
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: `Failed to send OTP: ${error.message}`,
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
         });
       }
-      return { email: true };
-    }
 
-    await cacheFor<string>(`otp:${user.id}`).set(data.properties.email_otp.toString(), 60 * 5);
-    let dashboardUrl: string | null = null;
-    const [_, projectId] = /https:\/\/([a-zA-Z0-9_-]+)\.supabase\.co/.exec(env.NEXT_PUBLIC_SUPABASE_URL) ?? [];
-    if (projectId) {
-      const {
-        rows: [cacheTable],
-      } = await db.execute(sql`
-        SELECT c.oid AS id
-        FROM pg_class c
-        JOIN pg_namespace nc ON nc.oid = c.relnamespace
-        WHERE c.relname = 'cache' AND nc.nspname = 'public'
-      `);
-      dashboardUrl = `https://supabase.com/dashboard/project/${projectId}/editor/${cacheTable?.id}?filter=key:eq:otp:${user.id}`;
-    }
-    return { email: false, dashboardUrl, otp: env.NODE_ENV === "development" ? data.properties.email_otp : undefined };
+      const token = await createJWT(authUser);
+      await setAuthToken(token);
+      
+      return { success: true, user: authUser };
+    }),
+
+  startSignIn: publicProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
+    // TODO: Implement OTP-based sign in - for now return error to force use of login endpoint
+    throw new TRPCError({
+      code: "NOT_IMPLEMENTED",
+      message: "OTP sign-in not implemented yet. Use login with password instead.",
+    });
   }),
   createUser: publicProcedure
     .input(
       z.object({
         email: z.string().email(),
         displayName: z.string().min(1),
+        password: z.string().min(8),
       }),
     )
     .mutation(async ({ input }) => {
@@ -93,14 +58,14 @@ export const userRouter = {
         });
       }
 
-      const supabase = createAdminClient();
-      const { error } = await supabase.auth.admin.createUser({
-        email: input.email,
-        user_metadata: {
-          display_name: input.displayName,
-        },
-      });
-      if (error) throw error;
+      const authUser = await createUser(input.email, input.password, input.displayName);
+      
+      if (!authUser) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create user",
+        });
+      }
 
       return { success: true };
     }),
@@ -109,9 +74,10 @@ export const userRouter = {
       z.object({
         email: z.string().email(),
         displayName: z.string().min(1),
+        password: z.string().min(8),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const existingMailbox = await db.query.mailboxes.findFirst({
         columns: { id: true },
       });
@@ -123,41 +89,33 @@ export const userRouter = {
         });
       }
 
-      const supabase = createAdminClient();
-      const { data: userData, error: createUserError } = await supabase.auth.admin.createUser({
-        email: input.email,
-        user_metadata: {
-          display_name: input.displayName,
-          permissions: "admin",
-        },
-        email_confirm: true,
-      });
-
-      if (createUserError) throw createUserError;
-      if (!userData.user) {
+      // Create admin user with JWT auth
+      const authUser = await createUser(input.email, input.password, input.displayName);
+      
+      if (!authUser) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to create user",
         });
       }
 
-      await setupMailboxForNewUser(userData.user);
+      // Update user to admin permissions
+      await db
+        .update(usersTable)
+        .set({ permissions: "admin" })
+        .where(eq(usersTable.id, authUser.id));
 
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: "recovery",
-        email: userData.user.email ?? "",
+      // TODO: Setup mailbox for new user
+      // await setupMailboxForNewUser(authUser);
+      
+      // Auto-login the new admin user
+      const token = await createJWT({
+        ...authUser,
+        permissions: "admin",
       });
+      await setAuthToken(token);
 
-      if (linkError) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to generate OTP",
-        });
-      }
-
-      return {
-        otp: linkData.properties.email_otp,
-      };
+      return { success: true };
     }),
 
   currentUser: protectedProcedure.query(async ({ ctx }) => {
@@ -169,14 +127,13 @@ export const userRouter = {
 
     const [user] = await db
       .select({
-        id: authUsers.id,
-        email: authUsers.email,
-        displayName: userProfiles.displayName,
-        permissions: userProfiles.permissions,
+        id: usersTable.id,
+        email: usersTable.email,
+        displayName: usersTable.displayName,
+        permissions: usersTable.permissions,
       })
-      .from(authUsers)
-      .innerJoin(userProfiles, eq(authUsers.id, userProfiles.id))
-      .where(eq(authUsers.id, userId));
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
 
     if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
     return user;

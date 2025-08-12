@@ -5,7 +5,7 @@ import { corsOptions, withWidgetAuth } from "@/app/api/widget/utils";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { conversationMessages, conversations } from "@/db/schema";
+import { conversationMessagesTable, conversationsTable } from "@/db/schema";
 import { createReactionEventPayload } from "@/lib/data/dashboardEvent";
 import { getMailbox } from "@/lib/data/mailbox";
 import { dashboardChannelId } from "@/lib/realtime/channels";

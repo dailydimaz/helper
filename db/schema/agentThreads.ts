@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, pgTable, text } from "drizzle-orm/pg-core";
-import { agentMessages } from "@/db/schema/agentMessages";
+import { agentMessagesTable } from "@/db/schema/agentMessages";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
+import { mailboxesTable } from "./mailboxes";
 
-export const agentThreads = pgTable(
+export const agentThreadsTable = pgTable(
   "agent_threads",
   {
     ...withTimestamps,
@@ -19,10 +19,10 @@ export const agentThreads = pgTable(
   ],
 ).enableRLS();
 
-export const agentThreadsRelations = relations(agentThreads, ({ one, many }) => ({
-  mailbox: one(mailboxes, {
-    fields: [agentThreads.unused_mailboxId],
-    references: [mailboxes.id],
+export const agentThreadsTableRelations = relations(agentThreadsTable, ({ one, many }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [agentThreadsTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
-  messages: many(agentMessages),
+  messages: many(agentMessagesTable),
 }));

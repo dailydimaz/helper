@@ -4,9 +4,9 @@ import { encryptedField } from "@/db/lib/encryptedField";
 import { PromptInfo } from "@/lib/ai/promptInfo";
 import { CustomerInfo } from "@/types/customerInfo";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversations } from "./conversations";
-import { files } from "./files";
-import { messageNotifications } from "./messageNotifications";
+import { conversationsTable } from "./conversations";
+import { filesTable } from "./files";
+import { messageNotificationsTable } from "./messageNotifications";
 
 export type ToolMetadata = {
   tool: {
@@ -30,7 +30,7 @@ type Metadata<T extends MessageRole> = T extends "tool" ? ToolMetadata : Message
 
 export const DRAFT_STATUSES: Partial<MessageStatus>[] = ["draft", "discarded"];
 
-export const conversationMessages = pgTable(
+export const conversationMessagesTable = pgTable(
   "messages",
   {
     ...withTimestamps,
@@ -91,12 +91,12 @@ export const conversationMessages = pgTable(
   ],
 ).enableRLS();
 
-export const conversationMessageRelations = relations(conversationMessages, ({ one, many }) => ({
-  conversation: one(conversations, {
-    fields: [conversationMessages.conversationId],
-    references: [conversations.id],
+export const conversationMessagesTableRelations = relations(conversationMessagesTable, ({ one, many }) => ({
+  conversation: one(conversationsTable, {
+    fields: [conversationMessagesTable.conversationId],
+    references: [conversationsTable.id],
   }),
-  files: many(files),
+  files: many(filesTable),
 
-  notifications: many(messageNotifications),
+  notifications: many(messageNotificationsTable),
 }));

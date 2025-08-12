@@ -1,15 +1,9 @@
 import { redirect } from "next/navigation";
 import { getAllMailboxes } from "@/lib/data/mailbox";
-import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 
 const Page = async () => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error) captureExceptionAndLog(error);
+  const user = await getLogin();
   if (!user) return redirect("/login");
 
   const mailboxes = await getAllMailboxes();

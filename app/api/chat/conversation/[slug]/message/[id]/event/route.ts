@@ -3,7 +3,7 @@ import { z } from "zod";
 import { withWidgetAuth } from "@/app/api/widget/utils";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { db } from "@/db/client";
-import { conversationEvents, conversationMessages, conversations } from "@/db/schema";
+import { conversationEventsTable, conversationMessagesTable, conversationsTable } from "@/db/schema";
 
 const EventPayloadSchema = z.object({
   type: z.literal("reasoning_toggled"),

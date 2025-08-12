@@ -1,11 +1,11 @@
 import { relations } from "drizzle-orm";
 import { bigint, boolean, index, integer, jsonb, pgTable, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { faqs } from "./faqs";
-import { gmailSupportEmails } from "./gmailSupportEmails";
-import { mailboxesMetadataApi } from "./mailboxesMetadataApi";
+import { faqsTable } from "./faqs";
+import { gmailSupportEmailsTable } from "./gmailSupportEmails";
+import { mailboxesMetadataApiTable } from "./mailboxesMetadataApi";
 
-export const mailboxes = pgTable(
+export const mailboxesTable = pgTable(
   "mailboxes_mailbox",
   {
     ...withTimestamps,
@@ -47,11 +47,11 @@ export const mailboxes = pgTable(
   ],
 ).enableRLS();
 
-export const mailboxesRelations = relations(mailboxes, ({ one, many }) => ({
-  mailboxesMetadataApi: one(mailboxesMetadataApi),
-  gmailSupportEmail: one(gmailSupportEmails, {
-    fields: [mailboxes.gmailSupportEmailId],
-    references: [gmailSupportEmails.id],
+export const mailboxesTableRelations = relations(mailboxesTable, ({ one, many }) => ({
+  mailboxesMetadataApi: one(mailboxesMetadataApiTable),
+  gmailSupportEmail: one(gmailSupportEmailsTable, {
+    fields: [mailboxesTable.gmailSupportEmailId],
+    references: [gmailSupportEmailsTable.id],
   }),
-  faqs: many(faqs),
+  faqs: many(faqsTable),
 }));

@@ -1,14 +1,14 @@
 import { relations } from "drizzle-orm";
 import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { authUsers } from "../supabaseSchema/auth";
+import { usersTable } from "./users";
 
 export type AccessRole = "afk" | "core" | "nonCore";
 
 // Created automatically when a user is inserted via a Postgres trigger. See db/drizzle/0101_little_arclight.sql
-export const userProfiles = pgTable("user_profiles", {
+export const userProfilesTable = pgTable("user_profiles", {
   id: uuid()
     .primaryKey()
-    .references(() => authUsers.id, { onDelete: "cascade" }),
+    .references(() => usersTable.id, { onDelete: "cascade" }),
   displayName: text().default(""),
   permissions: text().notNull().default("member"), // "member" or "admin"
   deletedAt: timestamp("deleted_at"),
@@ -25,12 +25,12 @@ export const userProfiles = pgTable("user_profiles", {
   pinnedIssueGroupIds: jsonb("pinned_issue_group_ids").$type<number[]>().default([]),
 }).enableRLS();
 
-export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
-  user: one(authUsers, {
-    fields: [userProfiles.id],
-    references: [authUsers.id],
+export const userProfilesTableRelations = relations(userProfilesTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [userProfilesTable.id],
+    references: [usersTable.id],
   }),
 }));
 
 export type BasicUserProfile = { id: string; displayName: string | null; email: string | null };
-export type FullUserProfile = typeof userProfiles.$inferSelect & { email: string | null };
+export type FullUserProfile = typeof userProfilesTable.$inferSelect & { email: string | null };

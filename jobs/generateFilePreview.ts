@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { db } from "@/db/client";
 import { files } from "@/db/schema";
-import { downloadFile, generateKey, uploadFile } from "@/lib/data/files";
+import { downloadFile, generateKey, uploadFile, PREVIEWS_PATH } from "@/lib/data/files";
 
 const PREVIEW_SIZE = { width: 500, height: 500 };
 const PREVIEW_FORMAT = "png";
@@ -30,7 +30,7 @@ export const generateFilePreview = async ({ fileId }: { fileId: number }) => {
     }
 
     if (await fs.stat(previewFilePath).catch(() => null)) {
-      const key = generateKey(["previews"], file.name);
+      const key = generateKey([PREVIEWS_PATH], `preview_${file.name}.${PREVIEW_FORMAT}`);
       const fileContent = await fs.readFile(previewFilePath);
       const finalKey = await uploadFile(key, fileContent, {
         mimetype: `image/${PREVIEW_FORMAT}`,

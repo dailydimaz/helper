@@ -3,7 +3,7 @@ import { createMessageBodySchema } from "@helperai/client";
 import { getCustomerFilter } from "@/app/api/chat/customerFilter";
 import { corsOptions, corsResponse, withWidgetAuth } from "@/app/api/widget/utils";
 import { db } from "@/db/client";
-import { conversations } from "@/db/schema";
+import { conversationsTable } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { createUserMessage } from "@/lib/ai/chat";
 import { validateAttachments } from "@/lib/shared/attachmentValidation";
@@ -23,8 +23,8 @@ export const POST = withWidgetAuth<{ slug: string }>(async ({ request, context: 
   const customerFilter = getCustomerFilter(session);
   if (!customerFilter) return corsResponse({ error: "Not authorized - Invalid session" }, { status: 401 });
 
-  const conversation = await db.query.conversations.findFirst({
-    where: and(eq(conversations.slug, slug), customerFilter),
+  const conversation = await db.query.conversationsTable.findFirst({
+    where: and(eq(conversationsTable.slug, slug), customerFilter),
   });
   if (!conversation) {
     return corsResponse({ error: "Conversation not found" }, { status: 404 });

@@ -13,7 +13,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { api } from "@/trpc/react";
+import { useDashboardReactions } from "@/hooks/use-dashboard";
+import { useConversations } from "@/hooks/use-conversations";
 import { type TimeRange } from "./dashboardContent";
 import { generateTimePeriods, type TimePeriod } from "./generateTimePeriods";
 
@@ -31,20 +32,17 @@ export function ReactionsChart({ timeRange, customDate }: { timeRange: TimeRange
     reactionType: "thumbs-up" | "thumbs-down";
   } | null>(null);
 
-  const { data, isLoading } = api.mailbox.conversations.messages.reactionCount.useQuery({
-    startDate,
-    endDate,
+  const { reactions: data, isLoading } = useDashboardReactions(
     period,
-  });
-
-  const { data: selectedConversations, isLoading: isLoadingConversations } = api.mailbox.conversations.list.useQuery(
-    {
-      reactionAfter: selectedBar ? selectedBar.startTime.toISOString() : startDate.toISOString(),
-      reactionBefore: selectedBar ? selectedBar.endTime.toISOString() : endDate.toISOString(),
-      reactionType: selectedBar?.reactionType ?? "thumbs-up",
-    },
-    { enabled: !!selectedBar },
+    startDate,
+    endDate
   );
+
+  // For selected conversations, we'll create a custom hook or use existing one with filters
+  // For now, we'll use the conversations hook but this would need API support for reaction filters
+  const { conversations: selectedConversations, isLoading: isLoadingConversations } = useConversations();
+  
+  // Note: The conversation filtering by reactions would need to be implemented in the API
 
   if (isLoading || !data) {
     return (

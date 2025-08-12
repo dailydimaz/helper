@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { conversations } from "@/db/schema";
+import { conversationsTable } from "@/db/schema";
 import { WidgetSessionPayload } from "@/lib/widgetSession";
 
 export function getCustomerFilter(session: WidgetSessionPayload) {

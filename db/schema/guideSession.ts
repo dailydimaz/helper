@@ -1,8 +1,8 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, jsonb, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversations } from "./conversations";
-import { platformCustomers } from "./platformCustomers";
+import { conversationsTable } from "./conversations";
+import { platformCustomersTable } from "./platformCustomers";
 
 export const guideSessionStatusEnum = pgEnum("guide_session_status", [
   "started",
@@ -30,7 +30,7 @@ export type GuideSessionStep = {
   completed: boolean;
 };
 
-export const guideSessions = pgTable(
+export const guideSessionsTable = pgTable(
   "guide_sessions",
   {
     ...withTimestamps,
@@ -57,7 +57,7 @@ export const guideSessions = pgTable(
   ],
 ).enableRLS();
 
-export const guideSessionEvents = pgTable(
+export const guideSessionEventsTable = pgTable(
   "guide_session_events",
   {
     id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
@@ -77,7 +77,7 @@ export const guideSessionEvents = pgTable(
   ],
 ).enableRLS();
 
-export const guideSessionReplays = pgTable(
+export const guideSessionReplaysTable = pgTable(
   "guide_session_replays",
   {
     id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),
@@ -97,29 +97,29 @@ export const guideSessionReplays = pgTable(
   ],
 ).enableRLS();
 
-export const guideSessionsRelations = relations(guideSessions, ({ one, many }) => ({
-  platformCustomer: one(platformCustomers, {
-    fields: [guideSessions.platformCustomerId],
-    references: [platformCustomers.id],
+export const guideSessionsTableRelations = relations(guideSessionsTable, ({ one, many }) => ({
+  platformCustomer: one(platformCustomersTable, {
+    fields: [guideSessionsTable.platformCustomerId],
+    references: [platformCustomersTable.id],
   }),
-  conversation: one(conversations, {
-    fields: [guideSessions.conversationId],
-    references: [conversations.id],
+  conversation: one(conversationsTable, {
+    fields: [guideSessionsTable.conversationId],
+    references: [conversationsTable.id],
   }),
-  events: many(guideSessionEvents),
-  replays: many(guideSessionReplays),
+  events: many(guideSessionEventsTable),
+  replays: many(guideSessionReplaysTable),
 }));
 
-export const guideSessionEventsRelations = relations(guideSessionEvents, ({ one }) => ({
-  guideSession: one(guideSessions, {
-    fields: [guideSessionEvents.guideSessionId],
-    references: [guideSessions.id],
+export const guideSessionEventsTableRelations = relations(guideSessionEventsTable, ({ one }) => ({
+  guideSession: one(guideSessionsTable, {
+    fields: [guideSessionEventsTable.guideSessionId],
+    references: [guideSessionsTable.id],
   }),
 }));
 
-export const guideSessionReplaysRelations = relations(guideSessionReplays, ({ one }) => ({
-  guideSession: one(guideSessions, {
-    fields: [guideSessionReplays.guideSessionId],
-    references: [guideSessions.id],
+export const guideSessionReplaysTableRelations = relations(guideSessionReplaysTable, ({ one }) => ({
+  guideSession: one(guideSessionsTable, {
+    fields: [guideSessionReplaysTable.guideSessionId],
+    references: [guideSessionsTable.id],
   }),
 }));

@@ -5,8 +5,8 @@ import { cache } from "react";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db, Transaction } from "@/db/client";
-import { conversationMessages, conversations, gmailSupportEmails, mailboxes, platformCustomers } from "@/db/schema";
-import { conversationEvents } from "@/db/schema/conversationEvents";
+import { conversationMessagesTable, conversationsTable, gmailSupportEmailsTable, mailboxesTable, platformCustomersTable } from "@/db/schema";
+import { conversationEventsTable } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { runAIQuery } from "@/lib/ai";
 import { MINI_MODEL } from "@/lib/ai/core";
@@ -23,22 +23,22 @@ import { determineVipStatus, getPlatformCustomer } from "./platformCustomer";
 
 type OptionalConversationAttributes = "slug" | "updatedAt" | "createdAt";
 
-type NewConversation = Omit<typeof conversations.$inferInsert, OptionalConversationAttributes | "source"> &
-  Partial<Pick<typeof conversations.$inferInsert, OptionalConversationAttributes>> & {
-    source: NonNullable<(typeof conversations.$inferInsert)["source"]>;
+type NewConversation = Omit<typeof conversationsTable.$inferInsert, OptionalConversationAttributes | "source"> &
+  Partial<Pick<typeof conversationsTable.$inferInsert, OptionalConversationAttributes>> & {
+    source: NonNullable<(typeof conversationsTable.$inferInsert)["source"]>;
     assignedToAI: boolean;
     isPrompt?: boolean;
     isVisitor?: boolean;
   };
 
-export type Conversation = typeof conversations.$inferSelect;
+export type Conversation = typeof conversationsTable.$inferSelect;
 
 export const CHAT_CONVERSATION_SUBJECT = "Chat";
 
 export const createConversation = async (
   conversation: NewConversation,
   tx: Transaction | typeof db = db,
-): Promise<typeof conversations.$inferSelect> => {
+): Promise<typeof conversationsTable.$inferSelect> => {
   try {
     const conversationValues = {
       ...conversation,
@@ -46,7 +46,7 @@ export const createConversation = async (
       subjectPlaintext: conversation.subject,
     };
 
-    const [newConversation] = await tx.insert(conversations).values(conversationValues).returning();
+    const [newConversation] = await tx.insert(conversationsTable).values(conversationValues).returning();
     if (!newConversation) throw new Error("Failed to create conversation");
 
     return newConversation;
@@ -56,9 +56,9 @@ export const createConversation = async (
   }
 };
 
-export const getOriginalConversation = async (conversationId: number): Promise<typeof conversations.$inferSelect> => {
+export const getOriginalConversation = async (conversationId: number): Promise<typeof conversationsTable.$inferSelect> => {
   const conversation = assertDefined(
-    await db.query.conversations.findFirst({ where: eq(conversations.id, conversationId) }),
+    await db.query.conversationsTable.findFirst({ where: eq(conversationsTable.id, conversationId) }),
   );
   if (conversation.mergedIntoId) return getOriginalConversation(conversation.mergedIntoId);
   return conversation;
@@ -69,7 +69,7 @@ export const getOriginalConversation = async (conversationId: number): Promise<t
 // since only the original conversation will be shown to staff in the inbox.
 export const updateOriginalConversation: typeof updateConversation = async (id, options, tx = db) => {
   const conversation = assertDefined(
-    await tx.query.conversations.findFirst({ columns: { mergedIntoId: true }, where: eq(conversations.id, id) }),
+    await tx.query.conversationsTable.findFirst({ columns: { mergedIntoId: true }, where: eq(conversationsTable.id, id) }),
   );
   if (conversation.mergedIntoId) return updateConversation(conversation.mergedIntoId, options, tx);
   return updateConversation(id, options, tx);
@@ -84,15 +84,15 @@ export const updateConversation = async (
     type = "update",
     skipRealtimeEvents = false,
   }: {
-    set?: Partial<typeof conversations.$inferInsert>;
+    set?: Partial<typeof conversationsTable.$inferInsert>;
     byUserId?: string | null;
     message?: string | null;
-    type?: (typeof conversationEvents.$inferSelect)["type"];
+    type?: (typeof conversationEventsTable.$inferSelect)["type"];
     skipRealtimeEvents?: boolean;
   },
   tx: Transaction | typeof db = db,
 ) => {
-  const current = assertDefined(await tx.query.conversations.findFirst({ where: eq(conversations.id, id) }));
+  const current = assertDefined(await tx.query.conversationsTable.findFirst({ where: eq(conversationsTable.id, id) }));
   if (dbUpdates.assignedToAI) {
     dbUpdates.status = "closed";
     dbUpdates.assignedToId = null;
@@ -109,16 +109,16 @@ export const updateConversation = async (
   }
 
   const updatedConversation = await tx
-    .update(conversations)
+    .update(conversationsTable)
     .set(dbUpdates)
-    .where(eq(conversations.id, id))
+    .where(eq(conversationsTable.id, id))
     .returning()
     .then(takeUniqueOrThrow);
   const updatesToLog = (["status", "assignedToId", "assignedToAI"] as const).filter(
     (key) => current[key] !== updatedConversation[key],
   );
   if (updatesToLog.length > 0) {
-    await tx.insert(conversationEvents).values({
+    await tx.insert(conversationEventsTable).values({
       conversationId: id,
       type: type ?? "update",
       changes: Object.fromEntries(updatesToLog.map((key) => [key, updatedConversation[key]])),
@@ -127,9 +127,9 @@ export const updateConversation = async (
     });
   }
   if (!current.assignedToAI && updatedConversation.assignedToAI) {
-    const message = await tx.query.conversationMessages.findFirst({
-      where: eq(conversationMessages.conversationId, updatedConversation.id),
-      orderBy: desc(conversationMessages.createdAt),
+    const message = await tx.query.conversationMessagesTable.findFirst({
+      where: eq(conversationMessagesTable.conversationId, updatedConversation.id),
+      orderBy: desc(conversationMessagesTable.createdAt),
     });
     if (message?.role === "user") {
       await triggerEvent("conversations/auto-response.create", { messageId: message.id });
@@ -187,9 +187,9 @@ export const updateConversation = async (
 };
 
 export const serializeConversation = (
-  mailbox: typeof mailboxes.$inferSelect,
-  conversation: typeof conversations.$inferSelect,
-  platformCustomer?: typeof platformCustomers.$inferSelect | null,
+  mailbox: typeof mailboxesTable.$inferSelect,
+  conversation: typeof conversationsTable.$inferSelect,
+  platformCustomer?: typeof platformCustomersTable.$inferSelect | null,
 ) => {
   return {
     id: conversation.id,
@@ -225,14 +225,14 @@ export const serializeConversation = (
 };
 
 export const serializeConversationWithMessages = async (
-  mailbox: typeof mailboxes.$inferSelect,
-  conversation: typeof conversations.$inferSelect,
+  mailbox: typeof mailboxesTable.$inferSelect,
+  conversation: typeof conversationsTable.$inferSelect,
 ) => {
   const platformCustomer = conversation.emailFrom ? await getPlatformCustomer(conversation.emailFrom) : null;
 
   const mergedInto = conversation.mergedIntoId
-    ? await db.query.conversations.findFirst({
-        where: eq(conversations.id, conversation.mergedIntoId),
+    ? await db.query.conversationsTable.findFirst({
+        where: eq(conversationsTable.id, conversation.mergedIntoId),
         columns: { slug: true },
       })
     : null;
@@ -254,25 +254,25 @@ export const serializeConversationWithMessages = async (
   };
 };
 
-export const getConversationBySlug = cache(async (slug: string): Promise<typeof conversations.$inferSelect | null> => {
-  const result = await db.query.conversations.findFirst({
-    where: eq(conversations.slug, slug),
+export const getConversationBySlug = cache(async (slug: string): Promise<typeof conversationsTable.$inferSelect | null> => {
+  const result = await db.query.conversationsTable.findFirst({
+    where: eq(conversationsTable.slug, slug),
   });
   return result ?? null;
 });
 
-export const getConversationById = cache(async (id: number): Promise<typeof conversations.$inferSelect | null> => {
-  const result = await db.query.conversations.findFirst({
-    where: eq(conversations.id, id),
+export const getConversationById = cache(async (id: number): Promise<typeof conversationsTable.$inferSelect | null> => {
+  const result = await db.query.conversationsTable.findFirst({
+    where: eq(conversationsTable.id, id),
   });
   return result ?? null;
 });
 
 export const getConversationBySlugAndMailbox = async (
   slug: string,
-): Promise<typeof conversations.$inferSelect | null> => {
-  const result = await db.query.conversations.findFirst({
-    where: eq(conversations.slug, slug),
+): Promise<typeof conversationsTable.$inferSelect | null> => {
+  const result = await db.query.conversationsTable.findFirst({
+    where: eq(conversationsTable.slug, slug),
   });
   return result ?? null;
 };
@@ -282,15 +282,15 @@ export const getNonSupportParticipants = async (conversation: Conversation): Pro
   if (!mailbox) throw new Error("Mailbox not found");
 
   const gmailSupportEmail = mailbox.gmailSupportEmailId
-    ? await db.query.gmailSupportEmails.findFirst({
-        where: eq(gmailSupportEmails.id, mailbox.gmailSupportEmailId),
+    ? await db.query.gmailSupportEmailsTable.findFirst({
+        where: eq(gmailSupportEmailsTable.id, mailbox.gmailSupportEmailId),
         columns: { email: true },
       })
     : null;
 
-  const messages = await db.query.conversationMessages.findMany({
-    where: and(eq(conversationMessages.conversationId, conversation.id), isNull(conversationMessages.deletedAt)),
-    orderBy: [asc(conversationMessages.createdAt)],
+  const messages = await db.query.conversationMessagesTable.findMany({
+    where: and(eq(conversationMessagesTable.conversationId, conversation.id), isNull(conversationMessagesTable.deletedAt)),
+    orderBy: [asc(conversationMessagesTable.createdAt)],
   });
 
   const participants = new Set<string>();
@@ -310,10 +310,10 @@ export const getNonSupportParticipants = async (conversation: Conversation): Pro
   return Array.from(participants);
 };
 
-const getLastUserMessage = async (conversationId: number): Promise<typeof conversationMessages.$inferSelect | null> => {
-  const lastUserMessage = await db.query.conversationMessages.findFirst({
-    where: and(eq(conversationMessages.conversationId, conversationId), eq(conversationMessages.role, "user")),
-    orderBy: [desc(conversationMessages.createdAt)],
+const getLastUserMessage = async (conversationId: number): Promise<typeof conversationMessagesTable.$inferSelect | null> => {
+  const lastUserMessage = await db.query.conversationMessagesTable.findFirst({
+    where: and(eq(conversationMessagesTable.conversationId, conversationId), eq(conversationMessagesTable.role, "user")),
+    orderBy: [desc(conversationMessagesTable.createdAt)],
   });
   return lastUserMessage ?? null;
 };
@@ -327,8 +327,8 @@ export const getRelatedConversations = async (
 ): Promise<Conversation[]> => {
   const mailbox = await getMailbox();
   if (!mailbox) return [];
-  const conversationWithMailbox = await db.query.conversations.findFirst({
-    where: eq(conversations.id, conversationId),
+  const conversationWithMailbox = await db.query.conversationsTable.findFirst({
+    where: eq(conversationsTable.id, conversationId),
   });
   if (!conversationWithMailbox) return [];
 
@@ -348,20 +348,20 @@ export const getRelatedConversations = async (
 
   const messageIds = await searchEmailsByKeywords(keywords.join(" "));
 
-  const relatedConversations = await db.query.conversations.findMany({
+  const relatedConversations = await db.query.conversationsTable.findMany({
     where: and(
-      not(eq(conversations.id, conversationId)),
+      not(eq(conversationsTable.id, conversationId)),
       inArray(
-        conversations.id,
+        conversationsTable.id,
         db
-          .selectDistinct({ conversationId: conversationMessages.conversationId })
-          .from(conversationMessages)
+          .selectDistinct({ conversationId: conversationMessagesTable.conversationId })
+          .from(conversationMessagesTable)
           .where(
             and(
-              isNull(conversationMessages.deletedAt),
-              not(eq(conversationMessages.role, "ai_assistant")),
+              isNull(conversationMessagesTable.deletedAt),
+              not(eq(conversationMessagesTable.role, "ai_assistant")),
               inArray(
-                conversationMessages.id,
+                conversationMessagesTable.id,
                 messageIds.map((m) => m.id),
               ),
               ...(params?.whereMessages ? [params.whereMessages] : []),
@@ -370,7 +370,7 @@ export const getRelatedConversations = async (
       ),
       ...(params?.where ? [params.where] : []),
     ),
-    orderBy: desc(conversations.createdAt),
+    orderBy: desc(conversationsTable.createdAt),
   });
   return relatedConversations;
 };
@@ -378,7 +378,7 @@ export const getRelatedConversations = async (
 export const generateConversationSubject = async (
   conversationId: number,
   messages: Message[],
-  mailbox: typeof mailboxes.$inferSelect,
+  mailbox: typeof mailboxesTable.$inferSelect,
 ) => {
   const subject =
     messages.length === 1 && messages[0] && messages[0].content.length <= 50
@@ -398,8 +398,8 @@ export const generateConversationSubject = async (
         ).text;
 
   await db
-    .update(conversations)
+    .update(conversationsTable)
     .set({ subject, subjectPlaintext: subject })
-    .where(eq(conversations.id, conversationId));
+    .where(eq(conversationsTable.id, conversationId));
   return subject;
 };

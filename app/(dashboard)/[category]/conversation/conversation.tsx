@@ -8,10 +8,11 @@ import {
   Link as LinkIcon,
   PanelRightClose,
   PanelRightOpen,
+  RefreshCw,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMediaQuery } from "react-responsive";
 import { useStickToBottom } from "use-stick-to-bottom";
 import {
@@ -39,11 +40,11 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useBreakpoint } from "@/components/useBreakpoint";
 import type { serializeMessage } from "@/lib/data/conversationMessage";
-import { conversationChannelId } from "@/lib/realtime/channels";
-import { useRealtimeEvent } from "@/lib/realtime/hooks";
+import { useRealtimeMessages } from "@/lib/swr/realtime-hooks";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
 import { useConversationsListInput } from "../shared/queries";
+import { mutate } from "swr";
+import { api } from "@/trpc/react";
 import ConversationSidebar from "./conversationSidebar";
 import { MessageActions } from "./messageActions";
 
@@ -201,11 +202,13 @@ const ConversationHeader = ({
   isAboveSm,
   sidebarVisible,
   setSidebarVisible,
+  refreshMessages,
 }: {
   subject: string;
   isAboveSm: boolean;
   sidebarVisible: boolean;
   setSidebarVisible: (visible: boolean) => void;
+  refreshMessages: () => void;
 }) => {
   const { data: conversationInfo } = useConversationContext();
   const { minimize, moveToNextConversation, moveToPreviousConversation, currentIndex, currentTotal, hasNextPage } =
@@ -264,6 +267,20 @@ const ConversationHeader = ({
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0 z-10 lg:w-44 justify-end">
         <CopyLinkButton />
         {conversationInfo?.id && <Viewers conversationSlug={conversationInfo.slug} />}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              onClick={() => refreshMessages()}
+              aria-label="Refresh messages"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Refresh messages</TooltipContent>
+        </Tooltip>
         <Button
           variant={!isAboveSm && sidebarVisible ? "subtle" : "ghost"}
           size="sm"
@@ -391,31 +408,20 @@ const MergedContent = () => {
 
 const ConversationContent = () => {
   const { conversationSlug, data: conversationInfo, isPending, error } = useConversationContext();
-  const utils = api.useUtils();
   const { input } = useConversationsListInput();
+  const utils = api.useUtils();
 
-  useRealtimeEvent(conversationChannelId(conversationSlug), "conversation.updated", (event) => {
-    utils.mailbox.conversations.get.setData({ conversationSlug }, (data) => (data ? { ...data, ...event.data } : null));
-  });
-  useRealtimeEvent(conversationChannelId(conversationSlug), "conversation.message", (event) => {
-    const message = { ...event.data, createdAt: new Date(event.data.createdAt) } as Awaited<
-      ReturnType<typeof serializeMessage>
-    >;
-    utils.mailbox.conversations.get.setData({ conversationSlug }, (data) => {
-      if (!data) return undefined;
-      if (data.messages.some((m) => m.id === message.id)) return data;
+  // Use SWR polling for conversation messages instead of real-time subscriptions
+  const { 
+    messages: realtimeMessages, 
+    addOptimisticMessage, 
+    refresh: refreshMessages 
+  } = useRealtimeMessages(conversationSlug);
 
-      return { ...data, messages: [...data.messages, { ...message, isNew: true }] };
-    });
-    scrollToBottom({ animation: "smooth" });
-  });
-  const conversationListInfo = utils.mailbox.conversations.list
-    .getData(input)
-    ?.conversations.find((c) => c.slug === conversationSlug);
-
-  const [previewFileIndex, setPreviewFileIndex] = useState(0);
-  const [previewFiles, setPreviewFiles] = useState<AttachedFile[]>([]);
-
+  // Track previous message count to detect new messages
+  const previousMessageCount = useRef(0);
+  
+  // Get scroll functions
   const { scrollRef, contentRef, scrollToBottom } = useStickToBottom({
     initial: "instant",
     resize: {
@@ -424,6 +430,33 @@ const ConversationContent = () => {
       mass: 0.7,
     },
   });
+
+  // Handle new messages from polling - scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (realtimeMessages.length > previousMessageCount.current) {
+      scrollToBottom({ animation: "smooth" });
+      
+      // Mark new messages as "new" for better UX
+      const newMessageCount = realtimeMessages.length - previousMessageCount.current;
+      if (newMessageCount > 0 && conversationInfo) {
+        mutate(`/conversations/${conversationSlug}`, (data: any) => {
+          if (!data?.data) return data;
+          const updatedMessages = data.data.messages.map((msg: any, index: number) => {
+            const isNewMessage = index >= data.data.messages.length - newMessageCount;
+            return isNewMessage ? { ...msg, isNew: true } : msg;
+          });
+          return { ...data, data: { ...data.data, messages: updatedMessages } };
+        }, false);
+      }
+    }
+    previousMessageCount.current = realtimeMessages.length;
+  }, [realtimeMessages.length, conversationSlug, scrollToBottom, conversationInfo]);
+  const conversationListInfo = utils.mailbox.conversations.list
+    .getData(input)
+    ?.conversations.find((c) => c.slug === conversationSlug);
+
+  const [previewFileIndex, setPreviewFileIndex] = useState(0);
+  const [previewFiles, setPreviewFiles] = useState<AttachedFile[]>([]);
 
   useLayoutEffect(() => {
     scrollToBottom({ animation: "instant" });
@@ -474,6 +507,7 @@ const ConversationContent = () => {
                   isAboveSm={isAboveSm}
                   sidebarVisible={sidebarVisible}
                   setSidebarVisible={setSidebarVisible}
+                  refreshMessages={refreshMessages}
                 />
                 <ErrorContent />
                 <LoadingContent />
@@ -523,6 +557,7 @@ const ConversationContent = () => {
           isAboveSm={isAboveSm}
           sidebarVisible={sidebarVisible}
           setSidebarVisible={setSidebarVisible}
+          refreshMessages={refreshMessages}
         />
         <ErrorContent />
         <LoadingContent />

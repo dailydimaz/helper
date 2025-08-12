@@ -1,6 +1,6 @@
 import { bigint, index, jsonb, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 
-export const cache = pgTable(
+export const cacheTable = pgTable(
   "cache",
   {
     id: bigint({ mode: "number" }).primaryKey().generatedByDefaultAsIdentity(),

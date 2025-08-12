@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mailboxes } from "@/db/schema";
+import { mailboxesTable } from "@/db/schema";
 import { getMailbox, Mailbox } from "@/lib/data/mailbox";
 import { verifyWidgetSession, type WidgetSessionPayload } from "@/lib/widgetSession";
 

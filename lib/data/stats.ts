@@ -1,7 +1,7 @@
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversations, conversationMessages as emails, userProfiles } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { conversations, conversationMessages as emails } from "@/db/schema";
+import { usersTable } from "@/db/schema/users";
 import { getFullName } from "@/lib/auth/authUtils";
 import { UserRole, UserRoles } from "@/lib/data/user";
 
@@ -21,13 +21,12 @@ export type MemberStats = {
 export async function getMemberStats(dateRange?: DateRange): Promise<MemberStats> {
   const allUsers = await db
     .select({
-      id: userProfiles.id,
-      email: authUsers.email,
-      displayName: userProfiles.displayName,
-      access: userProfiles.access,
+      id: usersTable.id,
+      email: usersTable.email,
+      displayName: usersTable.displayName,
+      access: usersTable.access,
     })
-    .from(userProfiles)
-    .innerJoin(authUsers, eq(userProfiles.id, authUsers.id));
+    .from(usersTable);
 
   const memberIds = allUsers.map((user) => user.id);
 

@@ -1,13 +1,24 @@
-import { api } from "@/trpc/server";
-import SessionsList from "./sessionsList";
+"use client";
 
-const Page = async () => {
+import { useMailbox } from "@/hooks/use-mailbox";
+import SessionsList from "./sessionsList";
+import LoadingSpinner from "@/components/loadingSpinner";
+
+const Page = () => {
   const limit = 10;
-  const mailboxData = await api.mailbox.get();
+  const { mailbox, isLoading } = useMailbox();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
-      <SessionsList mailbox={mailboxData} limit={limit} />
+      <SessionsList mailbox={mailbox} limit={limit} />
     </div>
   );
 };

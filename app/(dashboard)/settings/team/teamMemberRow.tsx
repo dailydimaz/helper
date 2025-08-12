@@ -13,8 +13,9 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { useDebouncedCallback } from "@/components/useDebouncedCallback";
 import { useSession } from "@/components/useSession";
 import { type UserRole } from "@/lib/data/user";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useMembers, useMemberActions } from "@/hooks/use-members";
+import { useConversations } from "@/hooks/use-conversations";
+import { mutate } from "swr";
 import DeleteMemberDialog from "./deleteMemberDialog";
 
 export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
@@ -43,12 +44,12 @@ type TeamMemberRowProps = {
 };
 
 const updateMember = (
-  data: RouterOutputs["mailbox"]["members"]["list"],
+  data: any,
   member: TeamMember,
   updates: Partial<TeamMember>,
 ) => ({
   ...data,
-  members: data.members.map((m) => (m.id === member.id ? { ...m, ...updates } : m)),
+  members: data.members.map((m: any) => (m.id === member.id ? { ...m, ...updates } : m)),
 });
 
 const TeamMemberRow = ({ member, isAdmin }: TeamMemberRowProps) => {
@@ -65,7 +66,10 @@ const TeamMemberRow = ({ member, isAdmin }: TeamMemberRowProps) => {
   const permissionsSaving = useSavingIndicator();
   const keywordsSaving = useSavingIndicator();
 
-  const utils = api.useUtils();
+  const { updateMember: updateMemberAction } = useMemberActions();
+  const { mutate: mutateMembers } = useMembers();
+  const { conversations } = useConversations({ assignee: [member.id] });
+  const count = { total: conversations?.length || 0 };
 
   useEffect(() => {
     setKeywordsInput(member.keywords.join(", "));
@@ -75,95 +79,51 @@ const TeamMemberRow = ({ member, isAdmin }: TeamMemberRowProps) => {
     setDisplayNameInput(member.displayName || "");
   }, [member.keywords, member.role, member.permissions, member.displayName]);
 
-  const { data: count } = api.mailbox.conversations.count.useQuery({
-    assignee: [member.id],
-  });
+  const updateMemberField = async (updates: Partial<TeamMember>, savingIndicator: any) => {
+    try {
+      await updateMemberAction({ userId: member.id, ...updates });
+      
+      // Optimistically update SWR cache
+      await mutate('/members', (currentData: any) => {
+        if (!currentData?.data) return currentData;
+        return {
+          ...currentData,
+          data: updateMember(currentData.data, member, updates)
+        };
+      }, false);
+      
+      // Revalidate to get fresh data
+      mutateMembers();
+      savingIndicator.setState("saved");
+    } catch (error: any) {
+      savingIndicator.setState("error");
+      throw error;
+    }
+  };
 
-  // Separate mutations for each operation type
-  const { mutate: updateDisplayName } = api.mailbox.members.update.useMutation({
-    onSuccess: (data) => {
-      // Only update displayName field to avoid race conditions
-      utils.mailbox.members.list.setData(undefined, (oldData) => {
-        if (!oldData) return oldData;
-        return updateMember(oldData, member, { displayName: data.user?.displayName ?? "" });
-      });
-      displayNameSaving.setState("saved");
-    },
-    onError: (error) => {
-      displayNameSaving.setState("error");
-      toast.error("Failed to update display name", { description: error.message });
-      setDisplayNameInput(member.displayName || "");
-    },
-  });
-
-  const { mutate: updateRole } = api.mailbox.members.update.useMutation({
-    onSuccess: (data) => {
-      // Update both role and keywords since role changes can affect keywords
-      utils.mailbox.members.list.setData(undefined, (oldData) => {
-        if (!oldData) return oldData;
-        return updateMember(oldData, member, { role: data.user?.role, keywords: data.user?.keywords });
-      });
-      roleSaving.setState("saved");
-    },
-    onError: (error) => {
-      roleSaving.setState("error");
-      toast.error("Failed to update role", { description: error.message });
-      setRole(member.role);
-      setKeywordsInput(member.keywords.join(", "));
-      setLocalKeywords(member.keywords);
-    },
-  });
-
-  const { mutate: updateKeywords } = api.mailbox.members.update.useMutation({
-    onSuccess: (data) => {
-      // Only update keywords field to avoid race conditions
-      utils.mailbox.members.list.setData(undefined, (oldData) => {
-        if (!oldData) return oldData;
-        return updateMember(oldData, member, { keywords: data.user?.keywords });
-      });
-      keywordsSaving.setState("saved");
-    },
-    onError: (error) => {
-      keywordsSaving.setState("error");
+  // Debounced function for keyword updates
+  const debouncedUpdateKeywords = useDebouncedCallback(async (newKeywords: string[]) => {
+    keywordsSaving.setState("saving");
+    try {
+      await updateMemberField({ keywords: newKeywords }, keywordsSaving);
+    } catch (error: any) {
       toast.error("Failed to update keywords", { description: error.message });
       setKeywordsInput(member.keywords.join(", "));
       setLocalKeywords(member.keywords);
-    },
-  });
-
-  const { mutate: updatePermissions } = api.mailbox.members.update.useMutation({
-    onSuccess: (data) => {
-      utils.mailbox.members.list.setData(undefined, (oldData) => {
-        if (!oldData) return oldData;
-        return updateMember(oldData, member, { permissions: data.user.permissions });
-      });
-      permissionsSaving.setState("saved");
-    },
-    onError: (error) => {
-      permissionsSaving.setState("error");
-      toast.error("Failed to update permissions", { description: error.message });
-      setPermissions(member.permissions);
-    },
-  });
-
-  // Debounced function for keyword updates
-  const debouncedUpdateKeywords = useDebouncedCallback((newKeywords: string[]) => {
-    keywordsSaving.setState("saving");
-    updateKeywords({
-      userId: member.id,
-      keywords: newKeywords,
-    });
+    }
   }, 500);
 
-  const debouncedUpdateDisplayName = useDebouncedCallback((newDisplayName: string) => {
+  const debouncedUpdateDisplayName = useDebouncedCallback(async (newDisplayName: string) => {
     displayNameSaving.setState("saving");
-    updateDisplayName({
-      userId: member.id,
-      displayName: newDisplayName,
-    });
+    try {
+      await updateMemberField({ displayName: newDisplayName }, displayNameSaving);
+    } catch (error: any) {
+      toast.error("Failed to update display name", { description: error.message });
+      setDisplayNameInput(member.displayName || "");
+    }
   }, 500);
 
-  const handleRoleChange = (newRole: UserRole) => {
+  const handleRoleChange = async (newRole: UserRole) => {
     setRole(newRole);
 
     // Clear keywords when changing FROM nonCore to another role
@@ -176,11 +136,14 @@ const TeamMemberRow = ({ member, isAdmin }: TeamMemberRowProps) => {
     }
 
     roleSaving.setState("saving");
-    updateRole({
-      userId: member.id,
-      role: newRole,
-      keywords: newKeywords,
-    });
+    try {
+      await updateMemberField({ role: newRole, keywords: newKeywords }, roleSaving);
+    } catch (error: any) {
+      toast.error("Failed to update role", { description: error.message });
+      setRole(member.role);
+      setKeywordsInput(member.keywords.join(", "));
+      setLocalKeywords(member.keywords);
+    }
   };
 
   const handleKeywordsChange = (value: string) => {
@@ -198,13 +161,15 @@ const TeamMemberRow = ({ member, isAdmin }: TeamMemberRowProps) => {
     debouncedUpdateDisplayName(value);
   };
 
-  const handlePermissionsChange = (newPermissions: string) => {
+  const handlePermissionsChange = async (newPermissions: string) => {
     setPermissions(newPermissions);
     permissionsSaving.setState("saving");
-    updatePermissions({
-      userId: member.id,
-      permissions: newPermissions,
-    });
+    try {
+      await updateMemberField({ permissions: newPermissions }, permissionsSaving);
+    } catch (error: any) {
+      toast.error("Failed to update permissions", { description: error.message });
+      setPermissions(member.permissions);
+    }
   };
 
   const getAvatarFallback = (member: TeamMember): string => {

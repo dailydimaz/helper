@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import { bigint, boolean, index, pgTable, text, unique, vector } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversationMessages } from "./conversationMessages";
-import { mailboxes } from "./mailboxes";
+import { conversationMessagesTable } from "./conversationMessages";
+import { mailboxesTable } from "./mailboxes";
 
-export const faqs = pgTable(
+export const faqsTable = pgTable(
   "faqs",
   {
     ...withTimestamps,
@@ -29,13 +29,13 @@ export const faqs = pgTable(
   ],
 ).enableRLS();
 
-export const faqsRelations = relations(faqs, ({ one }) => ({
-  mailbox: one(mailboxes, {
-    fields: [faqs.unused_mailboxId],
-    references: [mailboxes.id],
+export const faqsTableRelations = relations(faqsTable, ({ one }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [faqsTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
-  message: one(conversationMessages, {
-    fields: [faqs.messageId],
-    references: [conversationMessages.id],
+  message: one(conversationMessagesTable, {
+    fields: [faqsTable.messageId],
+    references: [conversationMessagesTable.id],
   }),
 }));

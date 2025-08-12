@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, DollarSign, Flag, Mail, MessageSquare, Star, ThumbsDown, ThumbsUp } from "lucide-react";
+import { BotIcon, DollarSign, Flag, Mail, MessageSquare, Star, ThumbsDown, ThumbsUp, RefreshCw } from "lucide-react";
 import * as motion from "motion/react-client";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -8,55 +8,29 @@ import { useInView } from "react-intersection-observer";
 import HumanizedTime from "@/components/humanizedTime";
 import { Panel } from "@/components/panel";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedCallback } from "@/components/useDebouncedCallback";
-import { dashboardChannelId } from "@/lib/realtime/channels";
-import { useRealtimeEvent } from "@/lib/realtime/hooks";
+import { useRealtimeEvents } from "@/hooks/use-dashboard";
 import { cn } from "@/lib/utils";
-import { RouterOutputs } from "@/trpc";
-import { api } from "@/trpc/react";
 
 const RealtimeEvents = () => {
   const { ref: loadMoreRef, inView } = useInView();
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = api.mailbox.latestEvents.useInfiniteQuery(
-    {},
-    {
-      getNextPageParam: (lastPage) => {
-        if (!lastPage?.length) return undefined;
-        return lastPage[lastPage.length - 1]?.timestamp;
-      },
-    },
-  );
+  // Use SWR for real-time events with polling
+  const { events: allEvents, isLoading, mutate: refresh } = useRealtimeEvents();
+
+  // TODO: Implement infinite scrolling with SWR if needed
+  const debouncedRefresh = useDebouncedCallback(() => {
+    refresh();
+  }, 1000);
 
   useEffect(() => {
-    if (inView && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
+    if (inView) {
+      // Trigger refresh when user scrolls to bottom (for future infinite scroll implementation)
+      debouncedRefresh();
     }
-  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const utils = api.useUtils();
-
-  const newEventsRef = useRef<RouterOutputs["mailbox"]["latestEvents"]>([]);
-  const addNewEvents = useDebouncedCallback(() => {
-    utils.mailbox.latestEvents.setInfiniteData({}, (data) => {
-      const firstPage = data?.pages[0];
-      if (!firstPage) return data;
-      const eventsToAdd = newEventsRef.current.filter((event) => !firstPage.some((e) => e.id === event.id));
-      return {
-        ...data,
-        pages: [[...eventsToAdd, ...firstPage], ...data.pages.slice(1)],
-      };
-    });
-    newEventsRef.current = [];
-  }, 5000);
-
-  useRealtimeEvent(dashboardChannelId(), "event", (message) => {
-    newEventsRef.current = [...newEventsRef.current, message.data];
-    addNewEvents();
-  });
-
-  const allEvents = data?.pages.flat() ?? [];
+  }, [inView, debouncedRefresh]);
 
   const EventSkeleton = () => (
     <Panel className="p-0">
@@ -86,8 +60,23 @@ const RealtimeEvents = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {allEvents.map((event) => (
+    <div className="space-y-4">
+      {/* Manual refresh button */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Recent Activity</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refresh()}
+          disabled={isLoading}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {(allEvents || []).map((event: any) => (
         <motion.div key={event.id} layout>
           <Panel
             className={cn(
@@ -170,18 +159,13 @@ const RealtimeEvents = () => {
           </Panel>
         </motion.div>
       ))}
-      {allEvents.length === 0 && (
+      {(!allEvents || allEvents.length === 0) && (
         <Panel className="col-span-full text-center py-8 text-muted-foreground">
-          No conversations yet. They will appear here in real-time.
+          No conversations yet. New activity will appear here automatically.
         </Panel>
       )}
-      {isFetchingNextPage &&
-        Array.from({ length: 3 }).map((_, i) => (
-          <motion.div key={`skeleton-${i}`} layout>
-            <EventSkeleton />
-          </motion.div>
-        ))}
       <div ref={loadMoreRef} className="col-span-full flex justify-center p-4"></div>
+      </div>
     </div>
   );
 };

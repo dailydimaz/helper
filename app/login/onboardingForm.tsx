@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
+// Removed Supabase client import - now handled by JWT auth system
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -22,18 +22,8 @@ export function OnboardingForm({ className, ...props }: React.ComponentPropsWith
 
   const onboardMutation = api.user.onboard.useMutation({
     onSuccess: async (data) => {
-      const supabase = createClient();
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: data.otp,
-        type: "email",
-      });
-
-      if (error) {
-        setFormError(error.message);
-        setIsLoading(false);
-        return;
-      }
+      // JWT token is set via cookie during onboard mutation
+      // No additional client-side auth verification needed
       router.push("/mine");
     },
     onError: (error) => {

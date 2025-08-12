@@ -1,7 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { assertDefined } from "@/components/utils/assert";
 import { getProfile } from "@/lib/data/user";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 import { appRouter, createTRPCContext } from "@/trpc";
 
 export const OPTIONS = () => {
@@ -12,10 +12,7 @@ export const OPTIONS = () => {
 };
 
 const handler = async (req: any) => {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const authUser = await getLogin();
 
   let enrichedUser = null;
 

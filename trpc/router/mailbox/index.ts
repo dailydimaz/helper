@@ -2,7 +2,7 @@ import { TRPCError, type TRPCRouterRecord } from "@trpc/server";
 import { and, count, eq, isNotNull, isNull, SQL } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { conversations, mailboxes } from "@/db/schema";
+import { conversationsTable, mailboxesTable } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { getLatestEvents } from "@/lib/data/dashboardEvent";
 import { getGuideSessionsForMailbox } from "@/lib/data/guide";
@@ -27,15 +27,15 @@ export const mailboxRouter = {
     const countOpenStatus = async (where?: SQL) => {
       const result = await db
         .select({ count: count() })
-        .from(conversations)
-        .where(and(eq(conversations.status, "open"), isNull(conversations.mergedIntoId), where));
+        .from(conversationsTable)
+        .where(and(eq(conversationsTable.status, "open"), isNull(conversationsTable.mergedIntoId), where));
       return result[0]?.count ?? 0;
     };
 
     const [all, mine, assigned] = await Promise.all([
       countOpenStatus(),
-      countOpenStatus(eq(conversations.assignedToId, ctx.user.id)),
-      countOpenStatus(isNotNull(conversations.assignedToId)),
+      countOpenStatus(eq(conversationsTable.assignedToId, ctx.user.id)),
+      countOpenStatus(isNotNull(conversationsTable.assignedToId)),
     ]);
 
     return {
@@ -75,9 +75,9 @@ export const mailboxRouter = {
     .mutation(async ({ ctx, input }) => {
       const preferences = { ...ctx.mailbox.preferences, ...(input.preferences ?? {}) };
       await db
-        .update(mailboxes)
+        .update(mailboxesTable)
         .set({ ...input, preferences })
-        .where(eq(mailboxes.id, ctx.mailbox.id));
+        .where(eq(mailboxesTable.id, ctx.mailbox.id));
     }),
 
   latestEvents: mailboxProcedure

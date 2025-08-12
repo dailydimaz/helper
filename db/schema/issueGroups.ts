@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, pgTable, text, vector } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversations } from "./conversations";
+import { conversationsTable } from "./conversations";
 
-export const issueGroups = pgTable(
+export const issueGroupsTable = pgTable(
   "issue_groups",
   {
     ...withTimestamps,
@@ -18,6 +18,6 @@ export const issueGroups = pgTable(
   ],
 ).enableRLS();
 
-export const issueGroupsRelations = relations(issueGroups, ({ many }) => ({
-  conversations: many(conversations),
+export const issueGroupsTableRelations = relations(issueGroupsTable, ({ many }) => ({
+  conversations: many(conversationsTable),
 }));

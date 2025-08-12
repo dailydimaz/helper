@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import { assertDefined } from "@/components/utils/assert";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { createClient } from "@/lib/supabase/client";
 import { api } from "@/trpc/react";
 
 export enum UploadStatus {
@@ -101,7 +100,7 @@ export const FileUploadProvider = ({
         await new Promise((resolve) =>
           setTimeout(resolve, (unsavedFiles.filter((f) => f.status === UploadStatus.UPLOADING).length + 1) * 200),
         );
-        const { file, bucket, signedUpload, isPublic } =
+        const { file, uploadToken, uploadUrl, isPublic } =
           await utils.client.mailbox.conversations.files.initiateUpload.mutate({
             conversationSlug: assertDefined(conversationSlug, "Conversation ID must be provided"),
             file: {
@@ -110,16 +109,27 @@ export const FileUploadProvider = ({
               isInline: unsavedFileInfo.inline,
             },
           });
-        const supabase = createClient();
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .uploadToSignedUrl(signedUpload.path, signedUpload.token, unsavedFileInfo.file);
-        if (error) throw error;
-        if (!data) throw new Error("No data returned from Supabase");
+        
+        // Upload file to our API endpoint
+        const formData = new FormData();
+        formData.append("file", unsavedFileInfo.file);
+        
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Authorization": `Bearer ${uploadToken}`,
+          },
+        });
+        
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Upload failed with status ${uploadResponse.status}`);
+        }
 
         let url;
         if (isPublic) {
-          url = supabase.storage.from(bucket).getPublicUrl(data.path).data.publicUrl;
+          url = `/api/files/public/${encodeURIComponent(file.key)}`;
         } else {
           url = await utils.client.mailbox.conversations.files.getFileUrl.query({ slug: file.slug });
         }

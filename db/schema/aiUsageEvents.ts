@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, integer, numeric, pgTable, varchar } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
+import { mailboxesTable } from "./mailboxes";
 
-export const aiUsageEvents = pgTable(
+export const aiUsageEventsTable = pgTable(
   "mailboxes_aiusageevent",
   {
     ...withTimestamps,
@@ -45,9 +45,9 @@ export const aiUsageEvents = pgTable(
   ],
 ).enableRLS();
 
-export const aiUsageEventsRelations = relations(aiUsageEvents, ({ one }) => ({
-  mailbox: one(mailboxes, {
-    fields: [aiUsageEvents.unused_mailboxId],
-    references: [mailboxes.id],
+export const aiUsageEventsTableRelations = relations(aiUsageEventsTable, ({ one }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [aiUsageEventsTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
 }));

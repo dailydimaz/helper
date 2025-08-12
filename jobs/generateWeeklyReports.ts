@@ -1,7 +1,7 @@
 import { endOfWeek, startOfWeek, subWeeks } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { assertDefined } from "@/components/utils/assert";
-import { mailboxes } from "@/db/schema";
+import { mailboxesTable } from "@/db/schema";
 import { TIME_ZONE } from "@/jobs/generateDailyReports";
 import { triggerEvent } from "@/jobs/trigger";
 import { getMailbox } from "@/lib/data/mailbox";
@@ -46,7 +46,7 @@ export async function generateMailboxReport({
   slackBotToken,
   slackAlertChannel,
 }: {
-  mailbox: typeof mailboxes.$inferSelect;
+  mailbox: typeof mailboxesTable.$inferSelect;
   slackBotToken: string;
   slackAlertChannel: string;
 }) {

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "crypto";
 import { fireworks } from "@ai-sdk/fireworks";
-import { TRPCError } from "@trpc/server";
+import { ApiError } from "@/lib/data/dataError";
 import {
   appendClientMessage,
   convertToCoreMessages,
@@ -20,7 +20,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { remark } from "remark";
 import remarkHtml from "remark-html";
 import { z } from "zod";
-import { ToolRequestBody } from "@helperai/client";
+import type { ToolRequestBody } from "@helperai/client";
 import { ReadPageToolConfig } from "@helperai/sdk";
 import { db } from "@/db/client";
 import { conversationMessages, files, MessageMetadata, ToolMetadata } from "@/db/schema";
@@ -861,7 +861,7 @@ export const generateDraftResponse = async (
       },
     },
   });
-  if (!lastUserMessage) throw new TRPCError({ code: "NOT_FOUND", message: "No user message found" });
+  if (!lastUserMessage) throw new ApiError({ code: "NOT_FOUND", message: "No user message found" });
 
   const oldDraft = await getLastAiGeneratedDraft(conversationId);
   const messages = await loadPreviousMessages(conversationId);

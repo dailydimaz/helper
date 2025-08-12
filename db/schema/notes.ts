@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, pgTable, text } from "drizzle-orm/pg-core";
-import { files } from "@/db/schema/files";
+import { filesTable } from "@/db/schema/files";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversations } from "./conversations";
+import { conversationsTable } from "./conversations";
 
-export const notes = pgTable(
+export const notesTable = pgTable(
   "conversations_note",
   {
     ...withTimestamps,
@@ -23,10 +23,10 @@ export const notes = pgTable(
   ],
 ).enableRLS();
 
-export const notesRelations = relations(notes, ({ one, many }) => ({
-  conversation: one(conversations, {
-    fields: [notes.conversationId],
-    references: [conversations.id],
+export const notesTableRelations = relations(notesTable, ({ one, many }) => ({
+  conversation: one(conversationsTable, {
+    fields: [notesTable.conversationId],
+    references: [conversationsTable.id],
   }),
-  files: many(files),
+  files: many(filesTable),
 }));

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 import { assertDefined } from "@/components/utils/assert";
 import { getProfile } from "@/lib/data/user";
-import { createClient } from "@/lib/supabase/server";
+import { getLogin } from "@/lib/cookie";
 import { createCaller, createTRPCContext, type AppRouter } from "@/trpc";
 import { createQueryClient } from "./query-client";
 
@@ -15,13 +15,12 @@ const createContext = cache(async (source: string) => {
   const heads = new Headers(await headers());
   heads.set("x-trpc-source", source);
 
-  const supabase = await createClient();
-  const user = (await supabase.auth.getUser()).data.user;
+  const authUser = await getLogin();
   return createTRPCContext({
-    user: user
+    user: authUser
       ? {
-          email: user.email ?? null,
-          ...assertDefined(await getProfile(user.id)),
+          email: authUser.email ?? null,
+          ...assertDefined(await getProfile(authUser.id)),
         }
       : null,
     headers: heads,

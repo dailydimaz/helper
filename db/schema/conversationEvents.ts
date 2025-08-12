@@ -1,9 +1,9 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, jsonb, pgTable, text } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { conversations } from "./conversations";
+import { conversationsTable } from "./conversations";
 
-export const conversationEvents = pgTable(
+export const conversationEventsTable = pgTable(
   "conversation_events",
   {
     ...withTimestamps,
@@ -31,9 +31,9 @@ export const conversationEvents = pgTable(
   ],
 ).enableRLS();
 
-export const conversationEventsRelations = relations(conversationEvents, ({ one }) => ({
-  conversation: one(conversations, {
-    fields: [conversationEvents.conversationId],
-    references: [conversations.id],
+export const conversationEventsTableRelations = relations(conversationEventsTable, ({ one }) => ({
+  conversation: one(conversationsTable, {
+    fields: [conversationEventsTable.conversationId],
+    references: [conversationsTable.id],
   }),
 }));

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api } from "@/trpc/react";
+import { useMembers } from "@/hooks/use-members";
+import { useApi } from "@/hooks/use-api";
 
 type TeamInviteProps = {
   teamMembers: { id: string; email?: string }[];
@@ -19,24 +20,30 @@ export function AddMember({ teamMembers }: TeamInviteProps) {
   const [permissions, setPermissions] = useState<"member" | "admin" | undefined>(undefined);
   const [emailTouched, setEmailTouched] = useState(false);
 
-  const utils = api.useUtils();
+  const { mutate: refreshMembers } = useMembers();
+  const { post } = useApi();
+  const [isAdding, setIsAdding] = useState(false);
 
-  const { mutate: addMemberMutation, isPending: isAdding } = api.organization.addMember.useMutation({
-    onSuccess: () => {
+  const addMemberMutation = async (data: any) => {
+    setIsAdding(true);
+    try {
+      await post("/organization/add-member", data);
       toast.success("Team member added", { description: `${emailInput} can now log in` });
 
       setEmailInput("");
       setDisplayNameInput("");
       setPermissions(undefined);
-
-      utils.mailbox.members.list.invalidate();
-    },
-    onError: (error) => {
+      
+      // Refresh members list
+      refreshMembers();
+    } catch (error: any) {
       toast.error("Failed to send invitation", { description: error.message });
-    },
-  });
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
-  const inviteMember = () => {
+  const inviteMember = async () => {
     if (!canAddMember || isAdding) {
       return;
     }
@@ -46,7 +53,7 @@ export function AddMember({ teamMembers }: TeamInviteProps) {
     if (existingMember) {
       toast.error("Member already exists", { description: "This user is already in your organization" });
     } else {
-      addMemberMutation({
+      await addMemberMutation({
         email: emailInput,
         displayName: displayNameInput,
         permissions,

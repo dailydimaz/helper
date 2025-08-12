@@ -4,7 +4,7 @@ import { PlusCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { api } from "@/trpc/react";
+import { useToolsSettings } from "@/hooks/use-settings";
 import SectionWrapper from "../sectionWrapper";
 import ApiCard from "./apiCard";
 import ApiForm from "./apiForm";
@@ -13,11 +13,12 @@ import { ToolsListSkeleton } from "./toolListSkeleton";
 const ToolSetting = () => {
   const [showApiForm, setShowApiForm] = useState(false);
   const {
-    data: apis = [],
+    tools: apis = [],
     isLoading: apisLoading,
-    isFetching: apisFetching,
     error,
-  } = api.mailbox.tools.list.useQuery();
+  } = useToolsSettings();
+  
+  const apisFetching = apisLoading; // For compatibility
 
   useEffect(() => {
     if (error) {

@@ -1,9 +1,9 @@
 import { relations, sql } from "drizzle-orm";
 import { bigint, index, jsonb, numeric, pgTable, unique, varchar } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { mailboxes } from "./mailboxes";
+import { mailboxesTable } from "./mailboxes";
 
-export const platformCustomers = pgTable(
+export const platformCustomersTable = pgTable(
   "mailboxes_platformcustomer",
   {
     ...withTimestamps,
@@ -20,15 +20,15 @@ export const platformCustomers = pgTable(
     index("mailboxes_platformcustomer_created_at_73183c2a").on(table.createdAt),
     index("mailboxes_platformcustomer_mailbox_id_58ea76bf").on(table.unused_mailboxId),
     unique("mailboxes_platformcustomer_email_key").on(table.email),
-    index("mailboxes_platformcustomer_email_ilike")
-      .using("gin", sql`${table.email} gin_trgm_ops`)
-      .concurrently(),
+    // Replaced pg_trgm index with standard B-tree index for email searches
+    index("mailboxes_platformcustomer_email_idx")
+      .on(table.email),
   ],
 ).enableRLS();
 
-export const platformCustomersRelations = relations(platformCustomers, ({ one }) => ({
-  mailbox: one(mailboxes, {
-    fields: [platformCustomers.unused_mailboxId],
-    references: [mailboxes.id],
+export const platformCustomersTableRelations = relations(platformCustomersTable, ({ one }) => ({
+  mailbox: one(mailboxesTable, {
+    fields: [platformCustomersTable.unused_mailboxId],
+    references: [mailboxesTable.id],
   }),
 }));

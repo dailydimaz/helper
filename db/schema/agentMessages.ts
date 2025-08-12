@@ -1,11 +1,11 @@
 import { relations } from "drizzle-orm";
 import { bigint, index, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
-import { agentThreads } from "./agentThreads";
+import { agentThreadsTable } from "./agentThreads";
 
 export type AgentMessageRole = "user" | "assistant" | "tool";
 
-export const agentMessages = pgTable(
+export const agentMessagesTable = pgTable(
   "agent_messages",
   {
     ...withTimestamps,
@@ -23,9 +23,9 @@ export const agentMessages = pgTable(
   ],
 ).enableRLS();
 
-export const agentMessagesRelations = relations(agentMessages, ({ one }) => ({
-  thread: one(agentThreads, {
-    fields: [agentMessages.agentThreadId],
-    references: [agentThreads.id],
+export const agentMessagesTableRelations = relations(agentMessagesTable, ({ one }) => ({
+  thread: one(agentThreadsTable, {
+    fields: [agentMessagesTable.agentThreadId],
+    references: [agentThreadsTable.id],
   }),
 }));
