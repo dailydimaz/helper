@@ -8,7 +8,7 @@ import { count, desc, ilike, eq } from "drizzle-orm";
 import slugify from "slugify";
 import z from "zod";
 
-async function GET(request: NextRequest) {
+async function getSavedReplies(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -55,7 +55,7 @@ async function GET(request: NextRequest) {
   }
 }
 
-async function POST(request: NextRequest) {
+async function createSavedReply(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -116,5 +116,6 @@ async function POST(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const POST = createMethodHandler({ POST }).POST;
+const handlers = createMethodHandler({ GET: getSavedReplies, POST: createSavedReply });
+export const GET = handlers.GET;
+export const POST = handlers.POST;

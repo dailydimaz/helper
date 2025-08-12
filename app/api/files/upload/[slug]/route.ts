@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { files } from "@/db/schema";
+import { filesTable } from "@/db/schema/files";
 import { storeFile, initializeStorage } from "@/lib/files/storage";
 import { validateFile } from "@/lib/files/validation";
 import { verifyTempDownloadToken, checkDownloadRateLimit } from "@/lib/files/security";
@@ -34,8 +34,8 @@ export async function POST(
     }
     
     // Get file record
-    const fileRecord = await db.query.files.findFirst({
-      where: eq(files.slug, slug),
+    const fileRecord = await db.query.filesTable.findFirst({
+      where: eq(filesTable.slug, slug),
     });
     
     if (!fileRecord) {
@@ -97,9 +97,9 @@ export async function POST(
     
     // Update file record
     await db
-      .update(files)
+      .update(filesTable)
       .set({ updatedAt: new Date() })
-      .where(eq(files.slug, slug));
+      .where(eq(filesTable.slug, slug));
     
     return NextResponse.json({
       success: true,

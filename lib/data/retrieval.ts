@@ -1,7 +1,7 @@
 import { and, cosineDistance, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversationMessages, faqs } from "@/db/schema";
-import { conversations } from "@/db/schema/conversations";
+import { conversationMessagesTable, faqsTable } from "@/db/schema";
+import { conversationsTable } from "@/db/schema/conversations";
 import { websitePages, websites } from "@/db/schema/websites";
 import { generateEmbedding } from "@/lib/ai";
 import { knowledgeBankPrompt, PAST_CONVERSATIONS_PROMPT, websitePagesPrompt } from "@/lib/ai/prompts";
@@ -23,15 +23,15 @@ export const findSimilarConversations = async (
   const queryEmbedding = Array.isArray(queryInput)
     ? queryInput
     : await generateEmbedding(queryInput, "query-find-past-conversations");
-  const similarity = sql<number>`1 - (${cosineDistance(conversations.embedding, queryEmbedding)})`;
+  const similarity = sql<number>`1 - (${cosineDistance(conversationsTable.embedding, queryEmbedding)})`;
 
-  let where = sql`${gt(similarity, similarityThreshold)} AND ${eq(conversations.isPrompt, false)}`;
+  let where = sql`${gt(similarity, similarityThreshold)} AND ${eq(conversationsTable.isPrompt, false)}`;
   if (excludeConversationSlug) {
-    where = sql`${where} AND ${conversations.slug} != ${excludeConversationSlug}`;
+    where = sql`${where} AND ${conversationsTable.slug} != ${excludeConversationSlug}`;
   }
 
-  const similarConversations = await db.query.conversations.findMany({
-    where: and(where, isNull(conversations.mergedIntoId)),
+  const similarConversations = await db.query.conversationsTable.findMany({
+    where: and(where, isNull(conversationsTable.mergedIntoId)),
     extras: {
       similarity: similarity.as("similarity"),
     },
@@ -50,8 +50,8 @@ export const getPastConversationsPrompt = async (query: string) => {
 
   const pastConversations = await Promise.all(
     similarConversations.map(async (conversation) => {
-      const messages = await db.query.conversationMessages.findMany({
-        where: eq(conversationMessages.conversationId, conversation.id),
+      const messages = await db.query.conversationMessagesTable.findMany({
+        where: eq(conversationMessagesTable.conversationId, conversation.id),
         orderBy: (messages, { asc }) => [asc(messages.id)],
       });
 
@@ -71,13 +71,13 @@ export const getPastConversationsPrompt = async (query: string) => {
 };
 
 export const findEnabledKnowledgeBankEntries = async () =>
-  await db.query.faqs.findMany({
-    where: eq(faqs.enabled, true),
+  await db.query.faqsTable.findMany({
+    where: eq(faqsTable.enabled, true),
     columns: {
       id: true,
       content: true,
     },
-    orderBy: (faqs, { asc }) => [asc(faqs.content)],
+    orderBy: (faqsTable, { asc }) => [asc(faqsTable.content)],
   });
 
 export const findSimilarWebsitePages = async (

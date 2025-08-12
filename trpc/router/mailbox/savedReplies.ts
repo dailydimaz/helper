@@ -6,7 +6,7 @@ import { z } from "zod";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { db } from "@/db/client";
 import { savedReplies } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 import { mailboxProcedure } from "./procedure";
 
 const sanitizeContent = (content: string): string => {
@@ -49,8 +49,8 @@ export const savedRepliesRouter = {
       const userIds = [...new Set(result.map((m) => m.createdByUserId).filter(Boolean))];
       const userDisplayNames =
         userIds.length > 0
-          ? await db.query.authUsers.findMany({
-              where: inArray(authUsers.id, userIds as string[]),
+          ? await db.query.users.findMany({
+              where: inArray(users.id, userIds as string[]),
               columns: { id: true, email: true },
             })
           : [];

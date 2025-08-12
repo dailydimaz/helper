@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";

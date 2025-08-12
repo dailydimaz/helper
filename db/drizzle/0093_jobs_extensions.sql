@@ -1,2 +1,3 @@
 COMMIT;--> statement-breakpoint
-CREATE EXTENSION IF NOT EXISTS pgmq;
+-- Extension removed: pgmq is no longer required
+-- Using lightweight job table implementation instead

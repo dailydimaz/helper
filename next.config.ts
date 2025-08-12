@@ -17,7 +17,7 @@ let nextConfig: NextConfig = {
   allowedDevOrigins: ["https://helperai.dev"],
   // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-8875108
   transpilePackages: ["next-auth"],
-  serverExternalPackages: ["natural", "picocolors"],
+  serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm"],
   outputFileTracingIncludes: {
     "/widget/sdk.js": ["./public/**/*"],
   },
@@ -90,6 +90,36 @@ let nextConfig: NextConfig = {
 
     // Needed to support pdfjs
     config.resolve.alias.canvas = false;
+
+    // Add Node.js polyfills for client-side compatibility
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      "http": false,
+      "https": false,
+      "url": false,
+      "zlib": false,
+      "stream": false,
+      "util": false,
+      "buffer": false,
+      "assert": false,
+      "net": false,
+      "tls": false,
+      "fs": false,
+      "path": false,
+      "os": false,
+      "crypto": false,
+      "child_process": false,
+      "worker_threads": false,
+      "cluster": false,
+      "events": false,
+      "querystring": false,
+      "punycode": false,
+      "http2": false,
+      "dns": false,
+      "module": false,
+      "vm": false,
+      "constants": false,
+    };
 
     // See https://github.com/getsentry/sentry-javascript/issues/12077#issuecomment-2180307072
     config.ignoreWarnings = [

@@ -6,7 +6,7 @@ import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/li
 import { updateSavedReplySchema } from "@/lib/validation/schema";
 import { eq } from "drizzle-orm";
 
-async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+async function getSavedReply(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -38,7 +38,7 @@ async function GET(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function updateSavedReply(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -91,7 +91,7 @@ async function PUT(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+async function deleteSavedReply(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -131,6 +131,7 @@ async function DELETE(request: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const PUT = createMethodHandler({ PUT }).PUT;
-export const DELETE = createMethodHandler({ DELETE }).DELETE;
+const handlers = createMethodHandler({ GET: getSavedReply, PUT: updateSavedReply, DELETE: deleteSavedReply });
+export const GET = handlers.GET;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

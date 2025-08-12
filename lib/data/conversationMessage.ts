@@ -8,16 +8,16 @@ import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { db, Transaction } from "@/db/client";
 import {
   BasicUserProfile,
-  conversationEvents,
-  conversationMessages,
+  conversationEventsTable,
+  conversationMessagesTable,
   DRAFT_STATUSES,
-  files,
-  mailboxes,
+  filesTable,
+  mailboxesTable,
   MessageMetadata,
-  notes,
+  notesTable,
   Tool,
 } from "@/db/schema";
-import { conversations } from "@/db/schema/conversations";
+import { conversationsTable } from "@/db/schema/conversations";
 import { triggerEvent } from "@/jobs/trigger";
 import { PromptInfo } from "@/lib/ai/promptInfo";
 import { getStaffName } from "@/lib/data/user";
@@ -27,13 +27,13 @@ import { formatBytes } from "../files";
 import { getConversationById, getNonSupportParticipants, updateConversation } from "./conversation";
 import { finishFileUpload, formatAttachments, getFileUrl } from "./files";
 
-const isAiDraftStale = (draft: typeof conversationMessages.$inferSelect, mailbox: typeof mailboxes.$inferSelect) => {
+const isAiDraftStale = (draft: typeof conversationMessagesTable.$inferSelect, mailbox: typeof mailboxesTable.$inferSelect) => {
   return draft.status !== "draft" || draft.createdAt < mailbox.promptUpdatedAt;
 };
 
 export const serializeResponseAiDraft = (
-  draft: typeof conversationMessages.$inferSelect,
-  mailbox: typeof mailboxes.$inferSelect,
+  draft: typeof conversationMessagesTable.$inferSelect,
+  mailbox: typeof mailboxesTable.$inferSelect,
 ) => {
   if (!draft?.responseToId) {
     return null;
@@ -51,11 +51,11 @@ export const findOriginalAndMergedMessages = async <T>(
   query: (condition: SQL) => Promise<T[]>,
 ) => {
   const [originalMessages, mergedMessages] = await Promise.all([
-    query(eq(conversationMessages.conversationId, conversationId)),
+    query(eq(conversationMessagesTable.conversationId, conversationId)),
     query(
       inArray(
-        conversationMessages.conversationId,
-        db.select({ id: conversations.id }).from(conversations).where(eq(conversations.mergedIntoId, conversationId)),
+        conversationMessagesTable.conversationId,
+        db.select({ id: conversationsTable.id }).from(conversationsTable).where(eq(conversationsTable.mergedIntoId, conversationId)),
       ),
     ),
   ]);
@@ -63,11 +63,11 @@ export const findOriginalAndMergedMessages = async <T>(
 };
 
 export const getMessagesOnly = async (conversationId: number) => {
-  const messages = await db.query.conversationMessages.findMany({
+  const messages = await db.query.conversationMessagesTable.findMany({
     where: and(
-      isNull(conversationMessages.deletedAt),
-      eq(conversationMessages.conversationId, conversationId),
-      or(eq(conversationMessages.role, "user"), notInArray(conversationMessages.status, DRAFT_STATUSES)),
+      isNull(conversationMessagesTable.deletedAt),
+      eq(conversationMessagesTable.conversationId, conversationId),
+      or(eq(conversationMessagesTable.role, "user"), notInArray(conversationMessagesTable.status, DRAFT_STATUSES)),
     ),
     orderBy: [asc(conversationMessages.createdAt)],
   });
@@ -80,8 +80,8 @@ export const getMessages = async (conversationId: number, mailbox: typeof mailbo
     db.query.conversationMessages.findMany({
       where: and(
         where,
-        isNull(conversationMessages.deletedAt),
-        or(eq(conversationMessages.role, "user"), notInArray(conversationMessages.status, DRAFT_STATUSES)),
+        isNull(conversationMessagesTable.deletedAt),
+        or(eq(conversationMessagesTable.role, "user"), notInArray(conversationMessagesTable.status, DRAFT_STATUSES)),
       ),
       columns: {
         id: true,
@@ -209,7 +209,7 @@ export const serializeMessage = async (
     files?: (typeof files.$inferSelect)[];
   },
   conversationId: number,
-  mailbox: typeof mailboxes.$inferSelect,
+  mailbox: typeof mailboxesTable.$inferSelect,
 ) => {
   const messageFiles =
     message.files ??
@@ -489,7 +489,7 @@ export const getLastAiGeneratedDraft = async (
 ): Promise<typeof conversationMessages.$inferSelect | null> => {
   const result = await tx.query.conversationMessages.findFirst({
     where: and(
-      eq(conversationMessages.conversationId, conversationId),
+      eq(conversationMessagesTable.conversationId, conversationId),
       eq(conversationMessages.role, "ai_assistant"),
       eq(conversationMessages.status, "draft"),
     ),
@@ -568,7 +568,7 @@ const discardAiGeneratedDrafts = async (conversationId: number, tx: Transaction 
     .set({ status: "discarded" })
     .where(
       and(
-        eq(conversationMessages.conversationId, conversationId),
+        eq(conversationMessagesTable.conversationId, conversationId),
         eq(conversationMessages.role, "ai_assistant"),
         eq(conversationMessages.status, "draft"),
       ),

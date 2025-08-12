@@ -6,7 +6,7 @@ import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/li
 import { updateUserSchema } from "@/lib/validation/schema";
 import { eq } from "drizzle-orm";
 
-async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+async function getUser(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -44,7 +44,7 @@ async function GET(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function updateUser(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -116,7 +116,7 @@ async function PUT(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+async function deleteUser(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -164,6 +164,7 @@ async function DELETE(request: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const PUT = createMethodHandler({ PUT }).PUT;
-export const DELETE = createMethodHandler({ DELETE }).DELETE;
+const handlers = createMethodHandler({ GET: getUser, PUT: updateUser, DELETE: deleteUser });
+export const GET = handlers.GET;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

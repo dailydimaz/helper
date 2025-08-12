@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
 
 type ApiFormProps = {
   onCancel: () => void;
@@ -19,18 +21,30 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
   const [apiKey, setApiKey] = useState("");
   const [apiName, setApiName] = useState("");
 
-  const utils = api.useUtils();
+  const { post } = useApi();
+  const [isImporting, setIsImporting] = useState(false);
 
-  const importMutation = api.mailbox.tools.import.useMutation({
-    onSuccess: () => {
+  const importApi = async (data: any) => {
+    setIsImporting(true);
+    try {
+      await post("/tools/import", data);
+      
+      // Invalidate tools list to refetch
+      await mutate(key => typeof key === 'string' && key.includes('/tools'));
+      
       toast.success("API imported successfully");
-      utils.mailbox.tools.list.invalidate();
       onCancel();
-    },
-    onError: (error) => {
-      toast.error("Failed to import API", { description: error.message });
-    },
-  });
+    } catch (error) {
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Failed to import API", { description: message });
+          return true; // Handled
+        }
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const toggleInputType = () => {
     setIsUrlInput(!isUrlInput);
@@ -47,7 +61,7 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
       return;
     }
 
-    await importMutation.mutateAsync({
+    await importApi({
       url: isUrlInput ? apiUrl : undefined,
       schema: !isUrlInput ? apiSchema : undefined,
       apiKey,
@@ -64,7 +78,7 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
           value={apiName}
           onChange={(e) => setApiName(e.target.value)}
           placeholder="Your App"
-          disabled={importMutation.isPending}
+          disabled={isImporting}
         />
       </div>
       <div>
@@ -82,7 +96,7 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
                   Enter OpenAPI schema instead
                 </button>
               }
-              disabled={importMutation.isPending}
+              disabled={isImporting}
             />
           </>
         ) : (
@@ -101,7 +115,7 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
   }
 }`}
               rows={10}
-              disabled={importMutation.isPending}
+              disabled={isImporting}
             />
             <button className="underline text-sm" onClick={toggleInputType} disabled={importMutation.isPending}>
               Enter OpenAPI URL instead
@@ -116,7 +130,7 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          disabled={importMutation.isPending}
+          disabled={isImporting}
           hint="This will be sent as a Bearer token in the Authorization header"
         />
       </div>
@@ -124,8 +138,8 @@ const ApiForm = ({ onCancel }: ApiFormProps) => {
         <Button variant="ghost" onClick={onCancel} disabled={importMutation.isPending}>
           Cancel
         </Button>
-        <Button variant="bright" onClick={handleImport} disabled={importMutation.isPending}>
-          {importMutation.isPending ? "Importing API..." : "Import API"}
+        <Button variant="bright" onClick={handleImport} disabled={isImporting}>
+          {isImporting ? "Importing API..." : "Import API"}
         </Button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { waitUntil } from "@vercel/functions";
 import { eq, sql } from "drizzle-orm";

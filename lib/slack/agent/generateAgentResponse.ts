@@ -6,7 +6,7 @@ import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
 import { conversationMessages, conversations, DRAFT_STATUSES, faqs, userProfiles } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { runAIQuery } from "@/lib/ai";
 import { MINI_MODEL } from "@/lib/ai/core";
@@ -133,10 +133,10 @@ export const generateAgentResponse = async (
           .select({
             id: userProfiles.id,
             displayName: userProfiles.displayName,
-            email: authUsers.email,
+            email: users.email,
           })
           .from(userProfiles)
-          .innerJoin(authUsers, eq(userProfiles.id, authUsers.id));
+          .innerJoin(users, eq(userProfiles.id, users.id));
 
         return members.map((member) => ({
           id: member.id,
@@ -259,10 +259,10 @@ export const generateAgentResponse = async (
           .select({
             id: userProfiles.id,
             displayName: userProfiles.displayName,
-            email: authUsers.email,
+            email: users.email,
           })
           .from(userProfiles)
-          .innerJoin(authUsers, eq(userProfiles.id, authUsers.id));
+          .innerJoin(users, eq(userProfiles.id, users.id));
 
         return messages.map((message) => ({
           id: message.id,

@@ -19,8 +19,10 @@ import { assertDefined } from "@/components/utils/assert";
 import { parseEmailList } from "@/components/utils/email";
 import { parseEmailAddress } from "@/lib/emails";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { RouterInputs } from "@/trpc";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import useSWR from "swr";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
 import { SavedReplySelector } from "./savedReplySelector";
 
 type NewConversationInfo = {
@@ -48,12 +50,18 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
   const { sendDisabled, sending, setSending } = useSendDisabled(newConversationInfo.message);
   const editorRef = useRef<TipTapEditorRef | null>(null);
 
-  const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
-    { onlyActive: true },
-    { refetchOnWindowFocus: false, refetchOnMount: true },
-  );
-
-  const { mutate: incrementSavedReplyUsage } = api.mailbox.savedReplies.incrementUsage.useMutation();
+  const { data: savedRepliesData } = useSWR("/saved-replies?onlyActive=true");
+  const savedReplies = savedRepliesData?.data;
+  
+  const { post } = useApi();
+  
+  const incrementSavedReplyUsage = async (slug: string) => {
+    try {
+      await post(`/saved-replies/${slug}/increment-usage`, {});
+    } catch (error) {
+      captureExceptionAndLog("Failed to track saved reply usage:", error);
+    }
+  };
 
   const handleSegment = useCallback(
     (segment: string) => {
@@ -80,24 +88,33 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
   });
 
   const router = useRouter();
-  const { mutateAsync: createNewConversation } = api.mailbox.conversations.create.useMutation({
-    onMutate: () => setSending(true),
-    onSuccess: () => {
+  
+  const createNewConversation = async (conversationData: any) => {
+    setSending(true);
+    try {
+      await post("/conversations", conversationData);
+      
+      // Invalidate conversations list to refresh
+      await mutate(key => typeof key === 'string' && key.startsWith('/conversations'));
+      
       router.refresh();
       toast.success("Message sent");
       onSubmit();
-    },
-    onError: (e) => {
-      captureExceptionAndLog(e);
-      toast.error("Failed to create conversation", { description: e instanceof Error ? e.message : "Unknown error" });
-    },
-    onSettled: () => {
+    } catch (error) {
+      captureExceptionAndLog(error);
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Failed to create conversation", { description: message });
+          return true; // Handled
+        }
+      });
+    } finally {
       setSending(false);
-    },
-  });
+    }
+  };
 
   const handleSavedReplySelect = useCallback(
-    (savedReply: { slug: string; content: string; name: string }) => {
+    async (savedReply: { slug: string; content: string; name: string }) => {
       try {
         const editor = assertDefined(editorRef.current?.editor);
         editor.commands.clearContent();
@@ -110,14 +127,7 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
             message: savedReply.content,
           }));
 
-          incrementSavedReplyUsage(
-            { slug: savedReply.slug },
-            {
-              onError: (error) => {
-                captureExceptionAndLog("Failed to track saved reply usage:", error);
-              },
-            },
-          );
+          await incrementSavedReplyUsage(savedReply.slug);
 
           toast.success(`Saved reply "${savedReply.name}" applied`);
         } else {
@@ -148,7 +158,7 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
     if (!bcc.success)
       return toast.error(`Invalid BCC email address: ${bcc.error.issues.map((issue) => issue.message).join(", ")}`);
 
-    const parsedNewConversationInfo: RouterInputs["mailbox"]["conversations"]["create"]["conversation"] = {
+    const parsedNewConversationInfo = {
       conversation_slug: conversationSlug,
       to_email_address: toEmailAddress,
       subject: newConversationInfo.subject.trim(),

@@ -4,7 +4,7 @@ import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 import { getBaseUrl } from "@/components/constants";
 import { db } from "@/db/client";
 import { conversations, userProfiles } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 import { getMailbox } from "@/lib/data/mailbox";
 import { getSlackUsersByEmail, postSlackMessage } from "@/lib/slack/client";
 
@@ -40,12 +40,12 @@ export const checkAssignedTicketResponseTimes = async (now = new Date()) => {
     .select({
       id: userProfiles.id,
       displayName: userProfiles.displayName,
-      email: authUsers.email,
+      email: users.email,
       permissions: userProfiles.permissions,
       access: userProfiles.access,
     })
     .from(userProfiles)
-    .innerJoin(authUsers, eq(userProfiles.id, authUsers.id));
+    .innerJoin(users, eq(userProfiles.id, users.id));
 
   const usersById = Object.fromEntries(users.map((user) => [user.id, user]));
 

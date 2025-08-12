@@ -4,6 +4,11 @@ import { embeddingFaq } from "./embeddingFaq";
 import { postEmailToGmail } from "./postEmailToGmail";
 import { handleAutoResponse } from "./handleAutoResponse";
 
+// Import new job implementations
+import { processEmailQueue, cleanupFailedEmails } from "./emailProcessing";
+import { cleanupDanglingFiles as realCleanupDanglingFiles, cleanupOldJobs, performDatabaseMaintenance } from "./systemMaintenance";
+import { sendPendingNotifications, cleanupOldNotifications, sendDigestNotifications } from "./notifications";
+
 // Import stubs for remaining jobs
 import {
   embeddingConversation,
@@ -27,7 +32,6 @@ import {
   publishRequestHumanSupport,
   handleSlackAgentMessage,
   bulkUpdateConversations,
-  cleanupDanglingFiles,
   renewMailboxWatches,
   bulkEmbeddingClosedConversations,
   checkAssignedTicketResponseTimes,
@@ -65,9 +69,22 @@ export const lightweightJobs = {
   publishRequestHumanSupport,
   handleSlackAgentMessage,
 
+  // Email processing jobs
+  processEmailQueue,
+  cleanupFailedEmails,
+
+  // Notification jobs
+  sendPendingNotifications,
+  cleanupOldNotifications,
+  sendDigestNotifications,
+
+  // System maintenance jobs
+  cleanupDanglingFiles: realCleanupDanglingFiles,
+  cleanupOldJobs,
+  performDatabaseMaintenance,
+
   // Scheduled/cron jobs
   bulkEmbeddingClosedConversations,
-  cleanupDanglingFiles,
   checkAssignedTicketResponseTimes,
   checkVipResponseTimes,
   renewMailboxWatches,

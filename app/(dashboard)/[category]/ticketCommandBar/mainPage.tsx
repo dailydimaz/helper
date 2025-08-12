@@ -16,7 +16,10 @@ import { useConversationContext } from "@/app/(dashboard)/[category]/conversatio
 import { Tool } from "@/app/(dashboard)/[category]/ticketCommandBar/toolForm";
 import useKeyboardShortcut from "@/components/useKeyboardShortcut";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import useSWR from "swr";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
 import GitHubSvg from "../icons/github.svg";
 import { CommandGroup } from "./types";
 
@@ -38,47 +41,60 @@ export const useMainPage = ({
   onInsertReply,
 }: MainPageProps): CommandGroup[] => {
   const { data: conversation, updateStatus, conversationSlug } = useConversationContext();
-  const utils = api.useUtils();
+  const { post } = useApi();
 
   const dismissToastRef = useRef<() => void>(() => {});
-  const { mutate: generateDraft } = api.mailbox.conversations.generateDraft.useMutation({
-    onMutate: () => {
-      const toastId = toast("Generating draft...", {
-        duration: 30_000,
-      });
-      dismissToastRef.current = () => toast.dismiss(toastId);
-    },
-    onSuccess: (draft) => {
+  
+  const generateDraft = async () => {
+    if (!conversationSlug) return;
+    
+    const toastId = toast("Generating draft...", {
+      duration: 30_000,
+    });
+    dismissToastRef.current = () => toast.dismiss(toastId);
+    
+    try {
+      const result = await post(`/conversations/${conversationSlug}/generate-draft`, {});
       dismissToastRef.current?.();
-      if (draft) {
-        utils.mailbox.conversations.get.setData({ conversationSlug }, (data) => (data ? { ...data, draft } : data));
+      
+      if (result?.data) {
+        // Invalidate conversation data to refetch with new draft
+        await mutate(key => 
+          typeof key === 'string' && key.includes(`/conversations/${conversationSlug}`)
+        );
+        toast.success("Draft generated successfully");
       } else {
         toast.error("Error generating draft");
       }
-    },
-    onError: () => {
+    } catch (error) {
       dismissToastRef.current?.();
-      toast.error("Error generating draft");
-    },
-  });
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Error generating draft", { description: message });
+          return true; // Handled
+        }
+      });
+    }
+  };
 
-  const { data: tools } = api.mailbox.conversations.tools.list.useQuery(
-    { conversationSlug },
-    { staleTime: Infinity, refetchOnMount: false, refetchOnWindowFocus: false, enabled: !!conversationSlug },
+  const { data: toolsData } = useSWR(
+    conversationSlug ? `/conversations/${conversationSlug}/tools` : null
   );
+  const tools = toolsData?.data;
 
-  const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
-    { onlyActive: true },
-    { refetchOnWindowFocus: false, refetchOnMount: true },
-  );
+  const { data: savedRepliesData } = useSWR("/saved-replies?onlyActive=true");
+  const savedReplies = savedRepliesData?.data;
 
-  const { mutate: incrementSavedReplyUsage } = api.mailbox.savedReplies.incrementUsage.useMutation();
+  const incrementSavedReplyUsage = async (slug: string) => {
+    try {
+      await post(`/saved-replies/${slug}/increment-usage`, {});
+    } catch (error) {
+      captureExceptionAndLog("Failed to track saved reply usage:", error);
+    }
+  };
 
-  const { data: mailbox } = api.mailbox.get.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
+  const { data: mailboxData } = useSWR("/mailbox");
+  const mailbox = mailboxData?.data;
 
   const isGitHubConnected = mailbox?.githubConnected && mailbox.githubRepoOwner && mailbox.githubRepoName;
 
@@ -100,15 +116,7 @@ export const useMainPage = ({
         onOpenChange(false);
 
         // Track usage separately - don't fail the insertion if tracking fails
-        incrementSavedReplyUsage(
-          { slug: savedReply.slug },
-          {
-            onError: (error) => {
-              // Log tracking error but don't show to user since content was inserted successfully
-              captureExceptionAndLog("Failed to track saved reply usage:", error);
-            },
-          },
-        );
+        await incrementSavedReplyUsage(savedReply.slug);
       } catch (error) {
         captureExceptionAndLog("Failed to insert saved reply content", {
           extra: {
@@ -202,9 +210,7 @@ export const useMainPage = ({
             label: "Generate draft",
             icon: SparklesIcon,
             onSelect: () => {
-              if (conversation?.slug) {
-                generateDraft({ conversationSlug: conversation.slug });
-              }
+              generateDraft();
               onOpenChange(false);
             },
           },

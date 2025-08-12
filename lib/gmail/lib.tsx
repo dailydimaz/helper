@@ -3,18 +3,18 @@ import { and, desc, isNotNull, isNull } from "drizzle-orm";
 import { htmlToText } from "html-to-text";
 import MailComposer from "nodemailer/lib/mail-composer";
 import { db } from "@/db/client";
-import { conversationMessages, conversations, files } from "@/db/schema";
+import { conversationMessagesTable, conversationsTable, filesTable } from "@/db/schema";
 import { getFirstName } from "@/lib/auth/authUtils";
 import { downloadFile } from "@/lib/data/files";
 import { getBasicProfileById } from "@/lib/data/user";
 import AIReplyEmail from "@/lib/emails/aiReply";
 
 export const convertConversationMessageToRaw = async (
-  email: typeof conversationMessages.$inferSelect & {
-    conversation: typeof conversations.$inferSelect & {
+  email: typeof conversationMessagesTable.$inferSelect & {
+    conversation: typeof conversationsTable.$inferSelect & {
       emailFrom: string;
     };
-    files: (typeof files.$inferSelect)[];
+    files: (typeof filesTable.$inferSelect)[];
   },
   emailFrom: string,
   composerOptions?: ConstructorParameters<typeof MailComposer>[0],
@@ -31,9 +31,9 @@ export const convertConversationMessageToRaw = async (
       }),
   );
 
-  const lastEmailWithMessageId = await db.query.conversationMessages.findFirst({
-    where: and(isNull(conversationMessages.deletedAt), isNotNull(conversationMessages.messageId)),
-    orderBy: desc(conversationMessages.id),
+  const lastEmailWithMessageId = await db.query.conversationMessagesTable.findFirst({
+    where: and(isNull(conversationMessagesTable.deletedAt), isNotNull(conversationMessagesTable.messageId)),
+    orderBy: desc(conversationMessagesTable.id),
   });
 
   let html;

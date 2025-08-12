@@ -12,7 +12,7 @@ const aiSettingsSchema = z.object({
   autoResponseDelay: z.number().min(0),
 });
 
-async function PUT(request: NextRequest) {
+async function updateAISettings(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -43,4 +43,5 @@ async function PUT(request: NextRequest) {
   }
 }
 
-export const PUT = createMethodHandler({ PUT }).PUT;
+const handlers = createMethodHandler({ PUT: updateAISettings });
+export const PUT = handlers.PUT;

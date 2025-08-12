@@ -93,11 +93,11 @@ All job types from the original system are supported:
 
 ## API Endpoint
 
-### GET /api/jobs
-Get job system statistics:
+### GET /api/jobs/stats
+Get comprehensive job system statistics:
 
 ```bash
-curl http://localhost:3010/api/jobs
+curl http://localhost:3010/api/jobs/stats
 ```
 
 Response:
@@ -107,22 +107,68 @@ Response:
     "pending": 5,
     "processing": 2,
     "completed": 150,
-    "failed": 3
+    "failed": 3,
+    "dead_letter": 1,
+    "metrics": {
+      "processed": 153,
+      "failed": 4,
+      "avgProcessingTime": 245.7,
+      "lastProcessedAt": "2024-01-01T12:00:00Z"
+    }
   },
   "scheduledJobs": 12
 }
 ```
 
-### POST /api/jobs
-Add a job manually:
+### GET /api/jobs/dashboard
+Get detailed performance dashboard:
 
 ```bash
-curl -X POST http://localhost:3010/api/jobs \
+curl http://localhost:3010/api/jobs/dashboard?hours=24
+```
+
+### POST /api/jobs/trigger
+Add jobs and trigger events:
+
+```bash
+# Trigger an event
+curl -X POST http://localhost:3010/api/jobs/trigger \
   -H "Content-Type: application/json" \
   -d '{
+    "action": "triggerEvent",
+    "event": "conversations/message.created",
+    "data": { "messageId": 123 }
+  }'
+
+# Add a job directly
+curl -X POST http://localhost:3010/api/jobs/trigger \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "addJob",
     "type": "generateFilePreview",
     "payload": { "fileId": 123 },
-    "scheduledFor": "2024-01-01T12:00:00Z"
+    "priority": 5
+  }'
+```
+
+### POST /api/jobs/stats
+Manage jobs and perform maintenance:
+
+```bash
+# Clean up old jobs
+curl -X POST http://localhost:3010/api/jobs/stats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "cleanup",
+    "olderThanHours": 168
+  }'
+
+# Retry a dead letter job
+curl -X POST http://localhost:3010/api/jobs/stats \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "retry",
+    "jobId": 123
   }'
 ```
 
@@ -154,25 +200,49 @@ The new system maintains the same trigger API, so existing code should work with
 await triggerEvent("conversations/message.created", { messageId: 123 });
 ```
 
-### Key Differences
+### Enhanced Features (Latest Updates)
 
-1. **No PGMQ**: Uses simple database table instead
-2. **No PostgreSQL cron**: Uses setTimeout for scheduling
-3. **Simplified jobs**: Lightweight implementations in `jobs/lightweight/`
-4. **In-process**: Jobs run in the same process (suitable for development)
+### Advanced Job Queue Features
+- **Priority-based processing**: Jobs with higher priority are processed first
+- **Automatic retry with exponential backoff**: Failed jobs are retried with increasing delays
+- **Dead letter queue**: Jobs that exceed max retry attempts are moved to a dead letter queue
+- **Comprehensive metrics**: Track processing times, success rates, and job statistics
+- **Job timeout protection**: Long-running jobs are terminated after 5 minutes
+- **Batch processing**: Process multiple jobs concurrently with configurable limits
+
+### New Job Types
+- **Email Processing**: `processEmailQueue`, `cleanupFailedEmails`
+- **Notifications**: `sendPendingNotifications`, `cleanupOldNotifications`
+- **System Maintenance**: `cleanupDanglingFiles`, `cleanupOldJobs`, `performDatabaseMaintenance`
+
+### Enhanced APIs
+- **GET /api/jobs/stats**: Comprehensive statistics and metrics
+- **GET /api/jobs/dashboard**: Performance dashboard with detailed analytics
+- **POST /api/jobs/trigger**: Event triggering and job management
+- **POST /api/jobs/stats**: Job cleanup and retry operations
+
+### Key Differences from Old System
+
+1. **Enhanced reliability**: Retry logic and dead letter queue for failed jobs
+2. **Better monitoring**: Comprehensive metrics and performance tracking
+3. **Priority support**: Important jobs are processed first
+4. **Automatic maintenance**: Built-in cleanup and optimization tasks
+5. **Production ready**: Robust error handling and timeout protection
 
 ### Benefits
 
-1. **Simpler**: No external dependencies or complex database functions
-2. **Easier debugging**: Jobs run in the same process
-3. **Faster development**: No database setup or migrations for job system
-4. **Same API**: Drop-in replacement for existing code
+1. **Fault tolerant**: Jobs retry automatically on failure
+2. **Monitorable**: Rich metrics and dashboard for observability
+3. **Scalable**: Configurable concurrency and batch processing
+4. **Maintainable**: Self-cleaning with automatic old job removal
+5. **Same API**: Drop-in replacement for existing code
 
-### Limitations
+### Production Considerations
 
-1. **Single process**: Jobs stop if the application stops
-2. **Memory-based**: Scheduled jobs are lost on restart
-3. **No distributed processing**: Runs on single instance only
+1. **Database maintenance**: Regular ANALYZE/VACUUM operations scheduled
+2. **Memory management**: Processing metrics and scheduled jobs are memory-efficient
+3. **Error handling**: Comprehensive error logging and dead letter queue management
+4. **Performance monitoring**: Built-in metrics for system health assessment
 
 ## Development
 

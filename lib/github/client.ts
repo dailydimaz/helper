@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { memoize } from "lodash-es";
 import { App } from "octokit";
 import { env } from "@/lib/env";

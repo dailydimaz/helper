@@ -11,7 +11,7 @@ const createIssueGroupSchema = z.object({
   description: z.string().optional(),
 });
 
-async function GET(request: NextRequest) {
+async function getIssueGroups(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -58,7 +58,7 @@ async function GET(request: NextRequest) {
   }
 }
 
-async function POST(request: NextRequest) {
+async function createIssueGroup(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -96,5 +96,6 @@ async function POST(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const POST = createMethodHandler({ POST }).POST;
+const handlers = createMethodHandler({ GET: getIssueGroups, POST: createIssueGroup });
+export const GET = handlers.GET;
+export const POST = handlers.POST;

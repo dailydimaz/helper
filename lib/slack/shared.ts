@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
 import { conversations, userProfiles } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 import { getFullName } from "@/lib/auth/authUtils";
 import { updateConversation } from "@/lib/data/conversation";
 import { createReply, getLastAiGeneratedDraft } from "@/lib/data/conversationMessage";
@@ -118,7 +118,7 @@ export const handleMessageSlackAction = async (message: SlackMessage, payload: a
       const selectedUserId = payload.view.state.values.assign_to.user.selected_option.value;
       const note = payload.view.state.values.note.message.value;
 
-      const selectedUser = await db.query.authUsers.findFirst({ where: eq(authUsers.id, selectedUserId) });
+      const selectedUser = await db.query.users.findFirst({ where: eq(users.id, selectedUserId) });
       if (!selectedUser) throw new Error(`User not found: ${selectedUserId}`);
 
       await db.transaction(async (tx) => {
@@ -191,10 +191,10 @@ const openAssignModal = async (message: SlackMessage, triggerId: string) => {
                 .select({
                   id: userProfiles.id,
                   displayName: userProfiles.displayName,
-                  email: authUsers.email,
+                  email: users.email,
                 })
                 .from(userProfiles)
-                .innerJoin(authUsers, eq(userProfiles.id, authUsers.id))
+                .innerJoin(users, eq(userProfiles.id, users.id))
                 .limit(100)
             ).map((member) => ({
               text: {

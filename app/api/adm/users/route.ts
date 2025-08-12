@@ -6,7 +6,7 @@ import { apiError, apiSuccess, createMethodHandler, validateRequest, parsePagina
 import { createUserSchema } from "@/lib/validation/schema";
 import { count, desc, ilike, or, eq } from "drizzle-orm";
 
-async function GET(request: NextRequest) {
+async function getUsers(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -59,7 +59,7 @@ async function GET(request: NextRequest) {
   }
 }
 
-async function POST(request: NextRequest) {
+async function createUser(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -121,5 +121,6 @@ async function POST(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const POST = createMethodHandler({ POST }).POST;
+const handlers = createMethodHandler({ GET: getUsers, POST: createUser });
+export const GET = handlers.GET;
+export const POST = handlers.POST;

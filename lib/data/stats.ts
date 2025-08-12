@@ -1,6 +1,6 @@
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversations, conversationMessages as emails } from "@/db/schema";
+import { conversationsTable, conversationMessagesTable as emails } from "@/db/schema";
 import { usersTable } from "@/db/schema/users";
 import { getFullName } from "@/lib/auth/authUtils";
 import { UserRole, UserRoles } from "@/lib/data/user";
@@ -44,7 +44,7 @@ export async function getMemberStats(dateRange?: DateRange): Promise<MemberStats
       replyCount: count(emails.id),
     })
     .from(emails)
-    .innerJoin(conversations, eq(emails.conversationId, conversations.id))
+    .innerJoin(conversationsTable, eq(emails.conversationId, conversationsTable.id))
     .where(and(eq(emails.role, "staff"), sql`${emails.userId} IN ${memberIds}`, ...dateConditions))
     .groupBy(emails.userId);
 

@@ -18,12 +18,27 @@ async function POST(request: NextRequest) {
 
     const response = clearAuthCookie();
     
-    return apiSuccess({}, "Logged out successfully");
+    // Modify the response to include success message
+    const responseBody = await response.json();
+    return new Response(JSON.stringify({
+      ...responseBody,
+      message: "Logout successful"
+    }), {
+      status: 200,
+      headers: response.headers,
+    });
   } catch (error) {
     console.error("Logout error:", error);
     // Even if there's an error, still clear the cookie
     const response = clearAuthCookie();
-    return apiSuccess({}, "Logged out");
+    const responseBody = await response.json();
+    return new Response(JSON.stringify({
+      ...responseBody,
+      message: "Logout successful"
+    }), {
+      status: 200,
+      headers: response.headers,
+    });
   }
 }
 

@@ -1,6 +1,6 @@
 # File Storage System
 
-This directory contains the new file storage system that replaces Supabase Storage with a local filesystem-based solution.
+A complete, secure file storage system for the Helper AI application that replaces Supabase Storage with a lightweight, self-hosted solution.
 
 ## Architecture
 

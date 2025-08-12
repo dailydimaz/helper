@@ -40,7 +40,16 @@ async function POST(request: NextRequest) {
     // Return user data without sensitive information
     const { password: _, ...userData } = user;
     
-    return apiSuccess(userData, "Registration successful");
+    // Modify the response to include user data and success message
+    const responseBody = await response.json();
+    return new Response(JSON.stringify({
+      ...responseBody,
+      data: userData,
+      message: "Registration successful"
+    }), {
+      status: 200,
+      headers: response.headers,
+    });
   } catch (error) {
     console.error("Registration error:", error);
     return apiError("Registration failed", 500);

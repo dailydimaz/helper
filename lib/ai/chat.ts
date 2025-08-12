@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fireworks } from "@ai-sdk/fireworks";
 import { ApiError } from "@/lib/data/dataError";
 import {

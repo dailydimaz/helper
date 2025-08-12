@@ -11,7 +11,7 @@ const updateIssueGroupSchema = z.object({
   description: z.string().optional(),
 });
 
-async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+async function getIssueGroup(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -43,7 +43,7 @@ async function GET(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function updateIssueGroup(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -96,7 +96,7 @@ async function PUT(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+async function deleteIssueGroup(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -136,6 +136,7 @@ async function DELETE(request: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const PUT = createMethodHandler({ PUT }).PUT;
-export const DELETE = createMethodHandler({ DELETE }).DELETE;
+const handlers = createMethodHandler({ GET: getIssueGroup, PUT: updateIssueGroup, DELETE: deleteIssueGroup });
+export const GET = handlers.GET;
+export const PUT = handlers.PUT;
+export const DELETE = handlers.DELETE;

@@ -135,6 +135,8 @@ export const ConversationListContextProvider = ({
   };
 
   // Real-time updates are now handled automatically by SWR's refreshInterval in useInfiniteConversations
+  // Migration to SWR polling complete - no additional real-time polling needed as useInfiniteConversations
+  // already implements proper SWR-based polling with refreshInterval
 
   const value = useMemo(
     () => ({

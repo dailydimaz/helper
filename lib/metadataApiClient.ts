@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { URLSearchParams } from "url";
 import { z } from "zod";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";

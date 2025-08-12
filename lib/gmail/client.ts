@@ -1,10 +1,10 @@
 import { google } from "googleapis";
 import { getBaseUrl } from "@/components/constants";
-import { gmailSupportEmails } from "@/db/schema";
+import { gmailSupportEmailsTable } from "@/db/schema";
 import { env } from "@/lib/env";
 
 export const getGmailService = (
-  gmailSupportEmail: Pick<typeof gmailSupportEmails.$inferSelect, "accessToken" | "refreshToken">,
+  gmailSupportEmail: Pick<typeof gmailSupportEmailsTable.$inferSelect, "accessToken" | "refreshToken">,
 ) => {
   const auth = new google.auth.OAuth2({
     clientId: env.GOOGLE_CLIENT_ID,

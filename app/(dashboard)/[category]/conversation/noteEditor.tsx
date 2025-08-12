@@ -4,7 +4,9 @@ import { toast } from "sonner";
 import type { Conversation, Note as NoteType } from "@/app/types/global";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
 
 interface NoteEditorProps {
   conversation: Conversation;
@@ -16,28 +18,34 @@ interface NoteEditorProps {
 
 export const NoteEditor = ({ conversation, note, isEditing, onCancelEdit, children }: NoteEditorProps) => {
   const [editContent, setEditContent] = useState(note.body);
-  const utils = api.useUtils();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { put } = useApi();
 
-  const updateNoteMutation = api.mailbox.conversations.notes.update.useMutation({
-    onSuccess: () => {
-      onCancelEdit();
-      utils.mailbox.conversations.get.invalidate({
-        conversationSlug: conversation.slug,
-      });
-      toast.success("Note updated successfully");
-    },
-    onError: (error) => {
-      toast.error("Failed to update note", { description: error.message });
-    },
-  });
-
-  const handleSaveEdit = () => {
-    if (editContent?.trim()) {
-      updateNoteMutation.mutate({
-        conversationSlug: conversation.slug,
-        noteId: note.id,
+  const handleSaveEdit = async () => {
+    if (!editContent?.trim()) return;
+    
+    setIsUpdating(true);
+    try {
+      await put(`/conversations/${conversation.slug}/notes/${note.id}`, {
         message: editContent.trim(),
       });
+      
+      // Invalidate conversation data to refetch updated notes
+      await mutate(key => 
+        typeof key === 'string' && key.includes(`/conversations/${conversation.slug}`)
+      );
+      
+      onCancelEdit();
+      toast.success("Note updated successfully");
+    } catch (error) {
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Failed to update note", { description: message });
+          return true; // Handled
+        }
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -56,11 +64,11 @@ export const NoteEditor = ({ conversation, note, isEditing, onCancelEdit, childr
           autoFocus
         />
         <div className="flex gap-2">
-          <Button size="sm" onClick={handleSaveEdit} disabled={updateNoteMutation.isPending || !editContent?.trim()}>
+          <Button size="sm" onClick={handleSaveEdit} disabled={isUpdating || !editContent?.trim()}>
             <Check className="h-4 w-4 mr-1" />
-            Save
+            {isUpdating ? "Saving..." : "Save"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={handleCancelEdit} disabled={updateNoteMutation.isPending}>
+          <Button size="sm" variant="ghost" onClick={handleCancelEdit} disabled={isUpdating}>
             <X className="h-4 w-4 mr-1" />
             Cancel
           </Button>

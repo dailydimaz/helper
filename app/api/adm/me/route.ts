@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { apiError, apiSuccess, createMethodHandler } from "@/lib/api";
 
-async function GET(request: NextRequest) {
+async function getCurrentAdminUser(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     
@@ -20,4 +20,5 @@ async function GET(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
+const handlers = createMethodHandler({ GET: getCurrentAdminUser });
+export const GET = handlers.GET;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { files } from "@/db/schema";
+import { filesTable } from "@/db/schema/files";
 import { retrieveFile } from "@/lib/files/storage";
 import { verifySignedUrl, checkDownloadRateLimit, getFileSecurityHeaders, sanitizeContentType } from "@/lib/files/security";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
@@ -36,8 +36,8 @@ export async function GET(
     }
     
     // Get file record
-    const fileRecord = await db.query.files.findFirst({
-      where: eq(files.slug, slug),
+    const fileRecord = await db.query.filesTable.findFirst({
+      where: eq(filesTable.slug, slug),
     });
     
     if (!fileRecord) {

@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { env } from "@/lib/env";
 
 const STORAGE_BASE_PATH = env.NODE_ENV === "production" ? "/tmp/file-storage" : "./file-storage";

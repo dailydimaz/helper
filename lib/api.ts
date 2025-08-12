@@ -147,24 +147,19 @@ export function handleApiError(error: unknown): NextResponse<ApiResponse> {
 
 // Method utilities
 export function createMethodHandler(handlers: {
-  GET?: (request: NextRequest) => Promise<NextResponse>;
-  POST?: (request: NextRequest) => Promise<NextResponse>;
-  PUT?: (request: NextRequest) => Promise<NextResponse>;
-  DELETE?: (request: NextRequest) => Promise<NextResponse>;
-  PATCH?: (request: NextRequest) => Promise<NextResponse>;
+  GET?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
+  POST?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
+  PUT?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
+  DELETE?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
+  PATCH?: (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
 }) {
-  return async (request: NextRequest) => {
-    try {
-      const method = request.method as keyof typeof handlers;
-      const handler = handlers[method];
-      
-      if (!handler) {
-        return apiError("Method not allowed", 405);
-      }
-      
-      return await handler(request);
-    } catch (error) {
-      return handleApiError(error);
-    }
-  };
+  const methodMap = {} as Record<string, (request: NextRequest, ...args: any[]) => Promise<NextResponse>>;
+  
+  if (handlers.GET) methodMap.GET = handlers.GET;
+  if (handlers.POST) methodMap.POST = handlers.POST;
+  if (handlers.PUT) methodMap.PUT = handlers.PUT;
+  if (handlers.DELETE) methodMap.DELETE = handlers.DELETE;
+  if (handlers.PATCH) methodMap.PATCH = handlers.PATCH;
+  
+  return methodMap;
 }

@@ -1,17 +1,28 @@
-import { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import SuperJSON from "superjson";
+
+// Mock WebSocket client interface
+interface MockRealtimeClient {
+  channel: (name: string) => MockChannel;
+  removeChannel: (channel: MockChannel) => void;
+}
+
+interface MockChannel {
+  subscribe: () => void;
+  on: (type: string, filter: any, callback: (payload: any) => void) => void;
+}
 
 const channels: Record<
   string,
   {
-    channel: RealtimeChannel;
+    channel: MockChannel;
     eventListeners: Record<string, ((payload: { id: string; data: any }) => void)[]>;
   }
 > = {};
 
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+// Simple mock implementation for realtime events
+// This should be replaced with a proper WebSocket implementation when needed
 export const listenToRealtimeEvent = <Data = any>(
-  supabase: SupabaseClient,
+  client: MockRealtimeClient,
   channel: string,
   event: string,
   callback: (message: { id: string; data: Data }) => void,
@@ -19,7 +30,7 @@ export const listenToRealtimeEvent = <Data = any>(
   let channelObject = channels[channel];
   if (!channelObject) {
     channelObject = {
-      channel: supabase.channel(channel),
+      channel: client.channel(channel),
       eventListeners: {},
     };
     channels[channel] = channelObject;
@@ -35,7 +46,6 @@ export const listenToRealtimeEvent = <Data = any>(
       }
       const data = SuperJSON.parse(payload.data);
       if (process.env.NODE_ENV === "development") {
-        // eslint-disable-next-line no-console
         console.debug(
           "Helper received realtime event (this message will not be shown in production):",
           channel,
@@ -66,7 +76,7 @@ export const listenToRealtimeEvent = <Data = any>(
       }
 
       if (Object.keys(channelObject.eventListeners).length === 0) {
-        supabase.removeChannel(channelObject.channel);
+        client.removeChannel(channelObject.channel);
         delete channels[channel];
       }
     }

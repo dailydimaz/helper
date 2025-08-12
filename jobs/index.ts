@@ -73,3 +73,19 @@ export const cronJobs = {
   "0 16 * * 0,2-6": { generateDailyReports },
   "0 16 * * 1": { generateWeeklyReports },
 };
+
+// Lightweight job handlers - combines event and cron jobs for the new job system
+export const lightweightJobs = {
+  // Event-triggered jobs
+  ...eventJobs,
+  // Cron-triggered jobs
+  bulkEmbeddingClosedConversations,
+  cleanupDanglingFiles,
+  closeInactiveConversations,
+  checkAssignedTicketResponseTimes,
+  checkVipResponseTimes,
+  renewMailboxWatches,
+  scheduledWebsiteCrawl,
+  generateDailyReports,
+  generateWeeklyReports,
+};

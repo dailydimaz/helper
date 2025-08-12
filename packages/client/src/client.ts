@@ -1,4 +1,3 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { listenToRealtimeEvent } from "./realtime";
 import {
   ConversationDetails,
@@ -44,16 +43,23 @@ export class HelperClient {
     return this.token!;
   };
 
-  private supabase: SupabaseClient | null = null;
-  private getSupabase = async (): Promise<SupabaseClient> => {
-    if (!this.supabase) await this.createSession();
-    return this.supabase!;
+  private realtimeClient: any = null;
+  private getRealtimeClient = async (): Promise<any> => {
+    if (!this.realtimeClient) await this.createSession();
+    return this.realtimeClient!;
   };
 
   private async createSession() {
-    const { token, supabaseUrl, supabaseAnonKey } = await this.sessions.create(this.sessionParams);
+    const { token } = await this.sessions.create(this.sessionParams);
     this.token = token;
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create a mock realtime client for now
+    this.realtimeClient = {
+      channel: (name: string) => ({
+        subscribe: () => {},
+        on: () => {},
+      }),
+      removeChannel: () => {},
+    };
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -137,11 +143,11 @@ export class HelperClient {
         onSubjectChanged?: (subject: string) => void;
       },
     ) => {
-      const promise = this.getSupabase().then((supabase) => {
+      const promise = this.getRealtimeClient().then((client) => {
         let agentTypingTimeout: NodeJS.Timeout | null = null;
 
         const unlistenAgentTyping = listenToRealtimeEvent(
-          supabase,
+          client,
           `public:conversation-${conversationSlug}`,
           "agent-typing",
           () => {
@@ -152,7 +158,7 @@ export class HelperClient {
         );
 
         const unlistenAgentReply = listenToRealtimeEvent(
-          supabase,
+          client,
           `public:conversation-${conversationSlug}`,
           "agent-reply",
           (event) => {
@@ -166,7 +172,7 @@ export class HelperClient {
         );
 
         const unlistenConversationSubject = listenToRealtimeEvent(
-          supabase,
+          client,
           `public:conversation-${conversationSlug}`,
           "conversation-subject",
           (event) => {

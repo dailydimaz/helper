@@ -12,7 +12,7 @@ const generalSettingsSchema = z.object({
   defaultUserRole: z.enum(["member", "admin"]),
 });
 
-async function PUT(request: NextRequest) {
+async function updateGeneralSettings(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -44,4 +44,5 @@ async function PUT(request: NextRequest) {
   }
 }
 
-export const PUT = createMethodHandler({ PUT }).PUT;
+const handlers = createMethodHandler({ PUT: updateGeneralSettings });
+export const PUT = handlers.PUT;

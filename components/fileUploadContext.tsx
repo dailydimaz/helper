@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import { assertDefined } from "@/components/utils/assert";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
-import { api } from "@/trpc/react";
 
 export enum UploadStatus {
   UPLOADING = "uploading",
@@ -57,7 +56,6 @@ export const FileUploadProvider = ({
     for (const file of unsavedFiles) URL.revokeObjectURL(file.blobUrl);
     setUnsavedFiles(files.map((f) => ({ ...f, blobUrl: URL.createObjectURL(f.file) })));
   };
-  const utils = api.useUtils();
 
   const onRetry = (file: File): OnUpload => {
     const updatedFileInfo: UnsavedFileInfo = {
@@ -100,15 +98,29 @@ export const FileUploadProvider = ({
         await new Promise((resolve) =>
           setTimeout(resolve, (unsavedFiles.filter((f) => f.status === UploadStatus.UPLOADING).length + 1) * 200),
         );
-        const { file, uploadToken, uploadUrl, isPublic } =
-          await utils.client.mailbox.conversations.files.initiateUpload.mutate({
+        
+        // Initiate upload through API
+        const initiateResponse = await fetch("/api/files/initiate-upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             conversationSlug: assertDefined(conversationSlug, "Conversation ID must be provided"),
             file: {
               fileName: unsavedFileInfo.file.name,
               fileSize: unsavedFileInfo.file.size,
               isInline: unsavedFileInfo.inline,
             },
-          });
+          }),
+        });
+
+        if (!initiateResponse.ok) {
+          const errorData = await initiateResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Initiate upload failed with status ${initiateResponse.status}`);
+        }
+
+        const { file, uploadToken, uploadUrl, isPublic } = await initiateResponse.json();
         
         // Upload file to our API endpoint
         const formData = new FormData();
@@ -131,7 +143,18 @@ export const FileUploadProvider = ({
         if (isPublic) {
           url = `/api/files/public/${encodeURIComponent(file.key)}`;
         } else {
-          url = await utils.client.mailbox.conversations.files.getFileUrl.query({ slug: file.slug });
+          // Get signed URL for private files
+          const urlResponse = await fetch(`/api/files/url/${file.slug}`, {
+            method: "GET",
+          });
+          
+          if (!urlResponse.ok) {
+            const errorData = await urlResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to get file URL with status ${urlResponse.status}`);
+          }
+          
+          const urlData = await urlResponse.json();
+          url = urlData.url;
         }
 
         const updatedFile: UnsavedFileInfo = {

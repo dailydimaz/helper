@@ -1,2 +1,3 @@
 COMMIT;--> statement-breakpoint
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- Extension removed: pg_cron is no longer required
+-- Using application-level scheduling with setTimeout instead

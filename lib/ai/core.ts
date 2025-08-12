@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { APICallError, CoreMessage, CoreTool, embed, generateObject, generateText } from "ai";
 import { isWithinTokenLimit as isWithinTokenLimitForCompletion } from "gpt-tokenizer/model/gpt-4o";
 import { isWithinTokenLimit as isWithinTokenLimitForEmbeddings } from "gpt-tokenizer/model/text-embedding-3-small";

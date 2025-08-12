@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import natural from "natural";
 import { env } from "@/lib/env";
 

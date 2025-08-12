@@ -8,7 +8,7 @@ import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/li
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 
 // Helper to get conversation by slug
 async function getConversationBySlug(slug: string) {
@@ -71,8 +71,8 @@ async function PUT(request: NextRequest, { params }: { params: { slug: string } 
 
     // Validate assignee if provided
     if (assignedToId) {
-      const assignee = await db.query.authUsers.findFirst({
-        where: eq(authUsers.id, assignedToId),
+      const assignee = await db.query.users.findFirst({
+        where: eq(users.id, assignedToId),
       });
       if (!assignee) {
         return apiError("Invalid assignee", 400);

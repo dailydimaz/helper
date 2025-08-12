@@ -4,8 +4,8 @@ import { z } from "zod";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db } from "@/db/client";
-import { conversationMessages, conversations, files, platformCustomers } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { conversationMessagesTable, conversationsTable, filesTable, platformCustomersTable } from "@/db/schema";
+import { usersTable } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { generateDraftResponse } from "@/lib/ai/chat";
 import { createConversationEmbedding, PromptTooLongError } from "@/lib/ai/conversationEmbedding";
@@ -58,19 +58,19 @@ export const conversationsRouter = {
 
     const messages = await db
       .select({
-        role: conversationMessages.role,
-        cleanedUpText: conversationMessages.cleanedUpText,
-        conversationId: conversationMessages.conversationId,
-        createdAt: conversationMessages.createdAt,
+        role: conversationMessagesTable.role,
+        cleanedUpText: conversationMessagesTable.cleanedUpText,
+        conversationId: conversationMessagesTable.conversationId,
+        createdAt: conversationMessagesTable.createdAt,
       })
-      .from(conversationMessages)
+      .from(conversationMessagesTable)
       .where(
         inArray(
-          conversationMessages.conversationId,
+          conversationMessagesTable.conversationId,
           results.map((c) => c.id),
         ),
       )
-      .orderBy(desc(conversationMessages.createdAt));
+      .orderBy(desc(conversationMessagesTable.createdAt));
 
     return {
       conversations: results.map((conversation) => {
@@ -91,8 +91,8 @@ export const conversationsRouter = {
   }),
 
   bySlug: mailboxProcedure.input(z.object({ slugs: z.array(z.string()) })).query(async ({ input, ctx }) => {
-    const list = await db.query.conversations.findMany({
-      where: and(inArray(conversations.slug, input.slugs)),
+    const list = await db.query.conversationsTable.findMany({
+      where: and(inArray(conversationsTable.slug, input.slugs)),
     });
     return await Promise.all(list.map((c) => serializeConversationWithMessages(ctx.mailbox, c)));
   }),
@@ -121,7 +121,7 @@ export const conversationsRouter = {
     )
     .mutation(async ({ input: { conversation }, ctx }) => {
       const { id: conversationId } = await db
-        .insert(conversations)
+        .insert(conversationsTable)
         .values({
           slug: conversation.conversation_slug,
           subject: conversation.subject,
@@ -129,7 +129,7 @@ export const conversationsRouter = {
           emailFrom: conversation.to_email_address,
           conversationProvider: "gmail",
         })
-        .returning({ id: conversations.id })
+        .returning({ id: conversationsTable.id })
         .then(takeUniqueOrThrow);
 
       await createReply({
@@ -152,8 +152,8 @@ export const conversationsRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       if (input.assignedToId) {
-        const assignee = await db.query.authUsers.findFirst({
-          where: eq(authUsers.id, input.assignedToId),
+        const assignee = await db.query.usersTable.findFirst({
+          where: eq(usersTable.id, input.assignedToId),
         });
         if (!assignee) throw new TRPCError({ code: "BAD_REQUEST" });
       }
@@ -208,12 +208,12 @@ export const conversationsRouter = {
   }),
 
   undo: conversationProcedure.input(z.object({ emailId: z.number() })).mutation(async ({ ctx, input }) => {
-    const email = await db.query.conversationMessages.findFirst({
+    const email = await db.query.conversationMessagesTable.findFirst({
       where: and(
-        eq(conversationMessages.id, input.emailId),
-        eq(conversationMessages.conversationId, ctx.conversation.id),
-        isNull(conversationMessages.deletedAt),
-        eq(conversationMessages.status, "queueing"),
+        eq(conversationMessagesTable.id, input.emailId),
+        eq(conversationMessagesTable.conversationId, ctx.conversation.id),
+        isNull(conversationMessagesTable.deletedAt),
+        eq(conversationMessagesTable.status, "queueing"),
       ),
     });
     if (!email) {
@@ -225,15 +225,15 @@ export const conversationsRouter = {
 
     await db.transaction(async (tx) => {
       await Promise.all([
-        tx.update(conversationMessages).set({ deletedAt: new Date() }).where(eq(conversationMessages.id, email.id)),
-        tx.update(conversations).set({ status: "open" }).where(eq(conversations.id, ctx.conversation.id)),
-        tx.update(files).set({ messageId: null }).where(eq(files.messageId, email.id)),
+        tx.update(conversationMessagesTable).set({ deletedAt: new Date() }).where(eq(conversationMessagesTable.id, email.id)),
+        tx.update(conversationsTable).set({ status: "open" }).where(eq(conversationsTable.id, ctx.conversation.id)),
+        tx.update(filesTable).set({ messageId: null }).where(eq(filesTable.messageId, email.id)),
       ]);
     });
   }),
   splitMerged: mailboxProcedure.input(z.object({ messageId: z.number() })).mutation(async ({ ctx, input }) => {
-    const message = await db.query.conversationMessages.findFirst({
-      where: and(eq(conversationMessages.id, input.messageId)),
+    const message = await db.query.conversationMessagesTable.findFirst({
+      where: and(eq(conversationMessagesTable.id, input.messageId)),
       with: {
         conversation: true,
       },
@@ -242,9 +242,9 @@ export const conversationsRouter = {
       throw new TRPCError({ code: "NOT_FOUND", message: "Message not found" });
     }
     const conversation = await db
-      .update(conversations)
+      .update(conversationsTable)
       .set({ mergedIntoId: null, status: "open" })
-      .where(eq(conversations.id, message.conversation.id))
+      .where(eq(conversationsTable.id, message.conversation.id))
       .returning()
       .then(takeUniqueOrThrow);
     return serializeConversation(ctx.mailbox, conversation, null);
@@ -289,23 +289,23 @@ export const conversationsRouter = {
     const now = new Date();
 
     const [conversation, assignedToMe, vipOverdue] = await Promise.all([
-      db.query.conversations.findFirst({
+      db.query.conversationsTable.findFirst({
         columns: { id: true },
       }),
-      db.$count(conversations, and(eq(conversations.assignedToId, ctx.user.id), eq(conversations.status, "open"))),
+      db.$count(conversationsTable, and(eq(conversationsTable.assignedToId, ctx.user.id), eq(conversationsTable.status, "open"))),
       ctx.mailbox.vipThreshold && ctx.mailbox.vipExpectedResponseHours
         ? db
             .select({ count: count() })
-            .from(conversations)
-            .leftJoin(platformCustomers, and(eq(conversations.emailFrom, platformCustomers.email)))
+            .from(conversationsTable)
+            .leftJoin(platformCustomersTable, and(eq(conversationsTable.emailFrom, platformCustomersTable.email)))
             .where(
               and(
-                eq(conversations.status, "open"),
+                eq(conversationsTable.status, "open"),
                 lt(
-                  conversations.lastUserEmailCreatedAt,
+                  conversationsTable.lastUserEmailCreatedAt,
                   new Date(now.getTime() - ctx.mailbox.vipExpectedResponseHours * 60 * 60 * 1000),
                 ),
-                sql`${platformCustomers.value} >= ${ctx.mailbox.vipThreshold * 100}`,
+                sql`${platformCustomersTable.value} >= ${ctx.mailbox.vipThreshold * 100}`,
               ),
             )
         : [],

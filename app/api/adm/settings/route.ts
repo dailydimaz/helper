@@ -31,7 +31,7 @@ let mockSettings = {
   },
 };
 
-async function GET(request: NextRequest) {
+async function getSettings(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -52,4 +52,5 @@ async function GET(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
+const handlers = createMethodHandler({ GET: getSettings });
+export const GET = handlers.GET;

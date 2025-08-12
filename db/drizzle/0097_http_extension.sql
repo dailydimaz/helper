@@ -1,2 +1,3 @@
 COMMIT;--> statement-breakpoint
-CREATE EXTENSION IF NOT EXISTS http;
+-- Extension removed: http is no longer required
+-- Using application-level HTTP requests with fetch API instead

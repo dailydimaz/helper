@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { db } from "@/db/client";
 import { Mailbox } from "@/lib/data/mailbox";

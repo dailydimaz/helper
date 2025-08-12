@@ -6,7 +6,7 @@ import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/li
 import { updateConversationSchema } from "@/lib/validation/schema";
 import { eq, desc } from "drizzle-orm";
 
-async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+async function getConversation(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -75,7 +75,7 @@ async function GET(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function updateConversation(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -141,5 +141,6 @@ async function PUT(request: NextRequest, { params }: { params: { id: string } })
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
-export const PUT = createMethodHandler({ PUT }).PUT;
+const handlers = createMethodHandler({ GET: getConversation, PUT: updateConversation });
+export const GET = handlers.GET;
+export const PUT = handlers.PUT;

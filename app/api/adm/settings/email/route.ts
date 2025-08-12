@@ -13,7 +13,7 @@ const emailSettingsSchema = z.object({
   fromName: z.string().min(1, "From name is required"),
 });
 
-async function PUT(request: NextRequest) {
+async function updateEmailSettings(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -44,4 +44,5 @@ async function PUT(request: NextRequest) {
   }
 }
 
-export const PUT = createMethodHandler({ PUT }).PUT;
+const handlers = createMethodHandler({ PUT: updateEmailSettings });
+export const PUT = handlers.PUT;

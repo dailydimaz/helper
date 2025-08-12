@@ -5,7 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/auth";
 import { apiError, apiSuccess, createMethodHandler, parsePagination } from "@/lib/api";
 import { count, desc, ilike, eq, and } from "drizzle-orm";
 
-async function GET(request: NextRequest) {
+async function getConversations(request: NextRequest) {
   try {
     const user = await requireAuth();
     requirePermission(user, "admin");
@@ -83,4 +83,5 @@ async function GET(request: NextRequest) {
   }
 }
 
-export const GET = createMethodHandler({ GET }).GET;
+const handlers = createMethodHandler({ GET: getConversations });
+export const GET = handlers.GET;

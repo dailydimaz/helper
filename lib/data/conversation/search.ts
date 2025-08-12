@@ -20,7 +20,7 @@ import {
 import { memoize } from "lodash-es";
 import { db } from "@/db/client";
 import { decryptFieldValue } from "@/db/lib/encryptedField";
-import { conversationEvents, conversationMessages, conversations, mailboxes, platformCustomers } from "@/db/schema";
+import { conversationEventsTable, conversationMessagesTable, conversationsTable, mailboxesTable, platformCustomersTable } from "@/db/schema";
 import { serializeConversation } from "@/lib/data/conversation";
 import { searchSchema } from "@/lib/data/conversation/searchSchema";
 import { getMetadataApiByMailbox } from "@/lib/data/mailboxMetadataApi";
@@ -34,7 +34,7 @@ import { z } from "zod";
 import { searchEmailsByKeywords } from "../../emailSearchService/searchEmailsByKeywords";
 
 export const searchConversations = async (
-  mailbox: typeof mailboxes.$inferSelect,
+  mailbox: typeof mailboxesTable.$inferSelect,
   filters: z.infer<typeof searchSchema>,
   currentUserId?: string,
 ) => {
@@ -53,61 +53,61 @@ export const searchConversations = async (
 
   // Filters on conversations and messages that we can pass to searchEmailsByKeywords
   let where: Record<string, SQL> = {
-    notMerged: isNull(conversations.mergedIntoId),
-    ...(filters.status?.length ? { status: inArray(conversations.status, filters.status) } : {}),
-    ...(filters.assignee?.length ? { assignee: inArray(conversations.assignedToId, filters.assignee) } : {}),
-    ...(filters.isAssigned === true ? { assignee: isNotNull(conversations.assignedToId) } : {}),
-    ...(filters.isAssigned === false ? { assignee: isNull(conversations.assignedToId) } : {}),
-    ...(filters.isPrompt !== undefined ? { isPrompt: eq(conversations.isPrompt, filters.isPrompt) } : {}),
-    ...(filters.createdAfter ? { createdAfter: gt(conversations.createdAt, new Date(filters.createdAfter)) } : {}),
-    ...(filters.createdBefore ? { createdBefore: lt(conversations.createdAt, new Date(filters.createdBefore)) } : {}),
+    notMerged: isNull(conversationsTable.mergedIntoId),
+    ...(filters.status?.length ? { status: inArray(conversationsTable.status, filters.status) } : {}),
+    ...(filters.assignee?.length ? { assignee: inArray(conversationsTable.assignedToId, filters.assignee) } : {}),
+    ...(filters.isAssigned === true ? { assignee: isNotNull(conversationsTable.assignedToId) } : {}),
+    ...(filters.isAssigned === false ? { assignee: isNull(conversationsTable.assignedToId) } : {}),
+    ...(filters.isPrompt !== undefined ? { isPrompt: eq(conversationsTable.isPrompt, filters.isPrompt) } : {}),
+    ...(filters.createdAfter ? { createdAfter: gt(conversationsTable.createdAt, new Date(filters.createdAfter)) } : {}),
+    ...(filters.createdBefore ? { createdBefore: lt(conversationsTable.createdAt, new Date(filters.createdBefore)) } : {}),
     ...(filters.repliedBy?.length || filters.repliedAfter || filters.repliedBefore
       ? {
           reply: exists(
             db
               .select()
-              .from(conversationMessages)
+              .from(conversationMessagesTable)
               .where(
                 and(
-                  eq(conversationMessages.conversationId, conversations.id),
-                  eq(conversationMessages.role, "staff"),
-                  filters.repliedBy?.length ? inArray(conversationMessages.userId, filters.repliedBy) : undefined,
-                  filters.repliedAfter ? gt(conversationMessages.createdAt, new Date(filters.repliedAfter)) : undefined,
+                  eq(conversationMessagesTable.conversationId, conversationsTable.id),
+                  eq(conversationMessagesTable.role, "staff"),
+                  filters.repliedBy?.length ? inArray(conversationMessagesTable.userId, filters.repliedBy) : undefined,
+                  filters.repliedAfter ? gt(conversationMessagesTable.createdAt, new Date(filters.repliedAfter)) : undefined,
                   filters.repliedBefore
-                    ? lt(conversationMessages.createdAt, new Date(filters.repliedBefore))
+                    ? lt(conversationMessagesTable.createdAt, new Date(filters.repliedBefore))
                     : undefined,
                 ),
               ),
           ),
         }
       : {}),
-    ...(filters.customer?.length ? { customer: inArray(conversations.emailFrom, filters.customer) } : {}),
+    ...(filters.customer?.length ? { customer: inArray(conversationsTable.emailFrom, filters.customer) } : {}),
     ...(filters.anonymousSessionId
-      ? { anonymousSessionId: eq(conversations.anonymousSessionId, filters.anonymousSessionId) }
+      ? { anonymousSessionId: eq(conversationsTable.anonymousSessionId, filters.anonymousSessionId) }
       : {}),
     ...(filters.reactionType
       ? {
           reaction: exists(
             db
               .select()
-              .from(conversationMessages)
+              .from(conversationMessagesTable)
               .where(
                 and(
-                  eq(conversationMessages.conversationId, conversations.id),
-                  eq(conversationMessages.reactionType, filters.reactionType),
-                  isNull(conversationMessages.deletedAt),
+                  eq(conversationMessagesTable.conversationId, conversationsTable.id),
+                  eq(conversationMessagesTable.reactionType, filters.reactionType),
+                  isNull(conversationMessagesTable.deletedAt),
                   filters.reactionAfter
-                    ? gte(conversationMessages.reactionCreatedAt, new Date(filters.reactionAfter))
+                    ? gte(conversationMessagesTable.reactionCreatedAt, new Date(filters.reactionAfter))
                     : undefined,
                   filters.reactionBefore
-                    ? lte(conversationMessages.reactionCreatedAt, new Date(filters.reactionBefore))
+                    ? lte(conversationMessagesTable.reactionCreatedAt, new Date(filters.reactionBefore))
                     : undefined,
                 ),
               ),
           ),
         }
       : {}),
-    ...(filters.events?.length ? { events: hasEvent(inArray(conversationEvents.type, filters.events)) } : {}),
+    ...(filters.events?.length ? { events: hasEvent(inArray(conversationEventsTable.type, filters.events)) } : {}),
     ...(filters.closed ? { closed: hasStatusChangeEvent("closed", filters.closed, CLOSED_BY_AGENT_MESSAGE) } : {}),
     ...(filters.reopened
       ? { reopened: hasStatusChangeEvent("open", filters.reopened, REOPENED_BY_AGENT_MESSAGE) }
@@ -117,7 +117,7 @@ export const searchConversations = async (
       : {}),
     ...(filters.issueGroupId
       ? {
-          issueGroup: eq(conversations.issueGroupId, filters.issueGroupId),
+          issueGroup: eq(conversationsTable.issueGroupId, filters.issueGroupId),
         }
       : {}),
   };
@@ -128,20 +128,20 @@ export const searchConversations = async (
   where = {
     ...where,
     ...(filters.isVip && mailbox.vipThreshold != null
-      ? { isVip: sql`${platformCustomers.value} >= ${mailbox.vipThreshold * 100}` }
+      ? { isVip: sql`${platformCustomersTable.value} >= ${mailbox.vipThreshold * 100}` }
       : {}),
     ...(filters.minValueDollars != null
-      ? { minValue: gt(platformCustomers.value, (filters.minValueDollars * 100).toString()) }
+      ? { minValue: gt(platformCustomersTable.value, (filters.minValueDollars * 100).toString()) }
       : {}),
     ...(filters.maxValueDollars != null
-      ? { maxValue: lt(platformCustomers.value, (filters.maxValueDollars * 100).toString()) }
+      ? { maxValue: lt(platformCustomersTable.value, (filters.maxValueDollars * 100).toString()) }
       : {}),
     ...(filters.search
       ? {
           search: or(
-            ilike(conversations.emailFrom, `%${filters.search}%`),
+            ilike(conversationsTable.emailFrom, `%${filters.search}%`),
             inArray(
-              conversations.id,
+              conversationsTable.id,
               matches.map((m) => m.conversationId),
             ),
           ),
@@ -151,38 +151,38 @@ export const searchConversations = async (
 
   const orderByField =
     filters.status?.length === 1 && filters.status[0] === "closed"
-      ? conversations.closedAt
-      : sql`COALESCE(${conversations.lastUserEmailCreatedAt}, ${conversations.createdAt})`;
+      ? conversationsTable.closedAt
+      : sql`COALESCE(${conversationsTable.lastUserEmailCreatedAt}, ${conversationsTable.createdAt})`;
   const isOpenTicketsOnly = filters.status?.length === 1 && filters.status[0] === "open";
   const orderBy = isOpenTicketsOnly
     ? [filters.sort === "newest" ? desc(orderByField) : asc(orderByField)]
     : [filters.sort === "oldest" ? asc(orderByField) : desc(orderByField)];
   const metadataEnabled = !filters.search && !!(await getMetadataApiByMailbox());
   if (metadataEnabled && (filters.sort === "highest_value" || !filters.sort) && isOpenTicketsOnly) {
-    orderBy.unshift(sql`${platformCustomers.value} DESC NULLS LAST`);
+    orderBy.unshift(sql`${platformCustomersTable.value} DESC NULLS LAST`);
   }
 
   const list = memoize(() =>
     db
       .select({
-        conversations_conversation: conversations,
-        mailboxes_platformcustomer: platformCustomers,
+        conversations_conversation: conversationsTable,
+        mailboxes_platformcustomer: platformCustomersTable,
         recent_message_cleanedUpText: sql<string | null>`recent_message.cleaned_up_text`,
         recent_message_createdAt: sql<string | null>`recent_message.created_at`,
       })
-      .from(conversations)
-      .leftJoin(platformCustomers, eq(conversations.emailFrom, platformCustomers.email))
+      .from(conversationsTable)
+      .leftJoin(platformCustomersTable, eq(conversationsTable.emailFrom, platformCustomersTable.email))
       .leftJoin(
         sql`LATERAL (
           SELECT
-            ${conversationMessages.cleanedUpText} as cleaned_up_text, 
-            ${conversationMessages.createdAt} as created_at
-          FROM ${conversationMessages}
+            ${conversationMessagesTable.cleanedUpText} as cleaned_up_text, 
+            ${conversationMessagesTable.createdAt} as created_at
+          FROM ${conversationMessagesTable}
           WHERE ${and(
-            eq(conversationMessages.conversationId, conversations.id),
-            inArray(conversationMessages.role, ["user", "staff"]),
+            eq(conversationMessagesTable.conversationId, conversationsTable.id),
+            inArray(conversationMessagesTable.role, ["user", "staff"]),
           )}
-          ORDER BY ${desc(conversationMessages.createdAt)}
+          ORDER BY ${desc(conversationMessagesTable.createdAt)}
           LIMIT 1
         ) as recent_message`,
         sql`true`,
@@ -225,8 +225,8 @@ export const searchConversations = async (
 export const countSearchResults = async (where: Record<string, SQL>) => {
   const [total] = await db
     .select({ count: count() })
-    .from(conversations)
-    .leftJoin(platformCustomers, eq(conversations.emailFrom, platformCustomers.email))
+    .from(conversationsTable)
+    .leftJoin(platformCustomersTable, eq(conversationsTable.emailFrom, platformCustomersTable.email))
     .where(and(...Object.values(where)));
 
   return total?.count ?? 0;
@@ -234,9 +234,9 @@ export const countSearchResults = async (where: Record<string, SQL>) => {
 
 export const getSearchResultIds = async (where: Record<string, SQL>) => {
   const results = await db
-    .select({ id: conversations.id })
-    .from(conversations)
-    .leftJoin(platformCustomers, eq(conversations.emailFrom, platformCustomers.email))
+    .select({ id: conversationsTable.id })
+    .from(conversationsTable)
+    .leftJoin(platformCustomersTable, eq(conversationsTable.emailFrom, platformCustomersTable.email))
     .where(and(...Object.values(where)));
 
   return results.map((result) => result.id);
@@ -246,7 +246,7 @@ const hasEvent = (where?: SQL) =>
   exists(
     db
       .select()
-      .from(conversationEvents)
+      .from(conversationEventsTable)
       .where(and(eq(conversationEvents.conversationId, conversations.id), where)),
   );
 

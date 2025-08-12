@@ -7,7 +7,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/trpc/react";
+import { useApi } from "@/hooks/use-api";
+import useSWR from "swr";
+import { mutate } from "swr";
+import { handleApiErr } from "@/lib/handle-api-err";
 import SectionWrapper from "../sectionWrapper";
 import KnowledgeBankItem, { KnowledgeEditForm } from "./knowledgeBankItem";
 import SuggestedKnowledgeBankItem from "./suggestedKnowledgeBankItem";
@@ -16,9 +19,10 @@ const KnowledgeBankSetting = () => {
   const [newFaqContent, setNewFaqContent] = useState<string>("");
   const [showNewFaqForm, setShowNewFaqForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const utils = api.useUtils();
+  const { post, delete: deleteReq } = useApi();
 
-  const { data: faqs = [], isLoading } = api.mailbox.faqs.list.useQuery();
+  const { data: faqsData, isLoading } = useSWR("/faqs");
+  const faqs = faqsData?.data || [];
 
   const filteredFaqs = faqs.filter((faq) => faq.content.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -31,38 +35,60 @@ const KnowledgeBankSetting = () => {
     (faq) => !faq.suggested && !withSuggestedReplacement.some((f) => f.id === faq.id),
   );
 
-  const createMutation = api.mailbox.faqs.create.useMutation({
-    onSuccess: (data) => {
-      utils.mailbox.faqs.list.setData(undefined, (old) =>
-        old ? [...old, data].sort((a, b) => a.content.localeCompare(b.content)) : [data],
-      );
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const createFaq = async (content: string) => {
+    setIsCreating(true);
+    try {
+      await post("/faqs", { content });
+      
+      // Invalidate FAQs list to refetch
+      await mutate(key => typeof key === 'string' && key.includes('/faqs'));
+      
       setShowNewFaqForm(false);
       setNewFaqContent("");
-    },
-    onError: (error) => {
-      toast.error("Error creating knowledge", { description: error.message });
-    },
-  });
-
-  const deleteMutation = api.mailbox.faqs.delete.useMutation({
-    onSuccess: () => {
+      toast.success("Knowledge created successfully");
+    } catch (error) {
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Error creating knowledge", { description: message });
+          return true; // Handled
+        }
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+  
+  const deleteFaq = async (id: number) => {
+    setIsDeleting(true);
+    try {
+      await deleteReq(`/faqs/${id}`);
+      
+      // Invalidate FAQs list to refetch
+      await mutate(key => typeof key === 'string' && key.includes('/faqs'));
+      
       toast.success("Knowledge deleted!");
-      utils.mailbox.faqs.list.invalidate();
-    },
-    onError: (error) => {
-      toast.error("Error deleting knowledge", { description: error.message });
-    },
-  });
+    } catch (error) {
+      handleApiErr(error, {
+        onError: (message) => {
+          toast.error("Error deleting knowledge", { description: message });
+          return true; // Handled
+        }
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleUpsertFaq = async () => {
     if (!newFaqContent) return;
-    await createMutation.mutateAsync({
-      content: newFaqContent,
-    });
+    await createFaq(newFaqContent);
   };
 
   const handleDeleteFaq = async (id: number) => {
-    await deleteMutation.mutateAsync({ id });
+    await deleteFaq(id);
   };
 
   return (
@@ -142,7 +168,7 @@ const KnowledgeBankSetting = () => {
               setShowNewFaqForm(false);
               setNewFaqContent("");
             }}
-            isLoading={createMutation.isPending}
+            isLoading={isCreating}
           />
         </div>
       ) : (

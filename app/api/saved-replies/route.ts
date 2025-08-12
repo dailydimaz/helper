@@ -7,7 +7,7 @@ import { requireMailboxAccess } from "@/lib/middleware/mailbox";
 import { apiError, apiSuccess, createMethodHandler, validateRequest, validateQueryParams } from "@/lib/api";
 import { db } from "@/db/client";
 import { savedRepliesTable } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
+import { users } from "@/db/schema";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 
 const sanitizeContent = (content: string): string => {
@@ -52,8 +52,8 @@ async function GET(request: NextRequest) {
     const userIds = [...new Set(result.map((m) => m.createdByUserId).filter(Boolean))];
     const userDisplayNames =
       userIds.length > 0
-        ? await db.query.authUsers.findMany({
-            where: inArray(authUsers.id, userIds as string[]),
+        ? await db.query.users.findMany({
+            where: inArray(users.id, userIds as string[]),
             columns: { id: true, email: true },
           })
         : [];
