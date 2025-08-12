@@ -103,7 +103,7 @@ export const processPendingJobs = async (limit: number = 10): Promise<number> =>
  */
 const callJobEndpoint = async (job: any): Promise<string> => {
   const endpoint = env.NODE_ENV === "development" 
-    ? "http://localhost:3010/api/job" 
+    ? "https://helperai.dev:3000/api/job" 
     : `${env.NEXT_PUBLIC_APP_URL}/api/job`;
     
   const timestamp = Math.floor(Date.now() / 1000).toString();

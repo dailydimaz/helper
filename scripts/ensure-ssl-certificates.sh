@@ -2,36 +2,28 @@
 
 set -euo pipefail
 
-if [ ! -f "scripts/docker/local-nginx/certs/helperai_dev.crt" ]; then
-    pnpm generate-ssl-certificates
-
-    # Check if uname exists (to avoid errors on native Windows)
-    if command -v uname >/dev/null 2>&1; then
-        OS_TYPE="$(uname)"
-        IS_WSL=false
-
-        # Detect WSL via /proc/version (works for WSL1 and WSL2)
-        # and any future variant with similar kernel signatures.
-        if grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; then
-            IS_WSL=true
-        fi
-
-        # Run chown on native Linux or WSL
-        # Set correct ownership
-        if [[ "$OS_TYPE" == "Linux" || "$IS_WSL" == true ]]; then
-            target_dir="scripts/docker/local-nginx/certs"
-
-            # Change ownership only if we have the rights or can elevate.
-            if [ "$(id -u)" -eq 0 ]; then
-                # Running as root – give the files back to the invoking user when possible
-                chown -R "${SUDO_USER:-$USER}:${SUDO_USER:-$USER}" "$target_dir"
-            elif command -v sudo >/dev/null 2>&1; then
-                sudo chown -R "$USER:$USER" "$target_dir" || echo "⚠️  Could not change ownership, continuing…"
-            else
-                echo "Skipping chown: insufficient privileges (not root and no sudo)"
-            fi
-        fi
-    else
-        echo "Skipping chown: 'uname' not available (likely native Windows)"
+if [ ! -f "certs/helperai_dev.crt" ]; then
+    # Check if mkcert is installed
+    if ! command -v mkcert &> /dev/null; then
+      echo "mkcert is not installed. Please install it first:"
+      echo "  brew install mkcert (macOS)"
+      echo "  choco install mkcert (Windows)"
+      echo "  apt install mkcert (Ubuntu/Debian) or visit https://github.com/FiloSottile/mkcert"
+      exit 1
     fi
+
+    # Install local CA if not already installed
+    mkcert -install
+
+    # Create certs directory if it doesn't exist
+    mkdir -p certs
+    cd certs
+
+    # Generate certificates
+    echo "Generating certificates for helperai.dev..."
+    mkcert helperai.dev "*.helperai.dev"
+    mv helperai.dev+1.pem helperai_dev.crt
+    mv helperai.dev+1-key.pem helperai_dev.key
+
+    echo "SSL certificates generated successfully in certs/"
 fi

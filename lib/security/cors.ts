@@ -19,9 +19,10 @@ const DEFAULT_CORS_CONFIG: CORSConfig = {
     'https://helperai.dev',
     'https://*.helperai.dev',
     // Add development origins
-    'http://localhost:3010',
-    'http://127.0.0.1:3010',
-    'https://localhost:3010',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://localhost:3000',
+    'https://helperai.dev:3000',
   ],
   allowedMethods: [
     'GET',
@@ -94,8 +95,9 @@ export const CORS_CONFIGS = {
       env.NEXT_PUBLIC_APP_URL,
       'https://helperai.dev',
       // Allow localhost for development
-      'http://localhost:3010',
-      'https://localhost:3010',
+      'http://localhost:3000',
+      'https://localhost:3000',
+      'https://helperai.dev:3000',
     ] as string[],
   },
   

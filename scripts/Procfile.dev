@@ -1,4 +1,4 @@
-web: PORT=3010 pnpm dev:next
+web: PORT=3000 pnpm dev:next
 email: pnpm dev:email
 sdk: pnpm --filter=@helperai/sdk dev
 sdk-types: pnpm --filter=@helperai/sdk dev:types

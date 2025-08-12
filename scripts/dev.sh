@@ -7,7 +7,7 @@ REQUIRED_PNPM_VERSION="10.8.0"
 
 cleanup() {
     echo "Shutting down..."
-    echo -e "\033[34mℹ️ The app will be stopped, but background services are still running. Use pnpm services:stop to stop them.\033[0m"
+    echo -e "\033[34mℹ️ The app will be stopped.\033[0m"
 
     pkill -P $$
     exit 0
@@ -60,6 +60,10 @@ fi
 pnpm db:migrate
 
 # Add the local CA to the Node.js environment
-export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
+if command -v mkcert &> /dev/null; then
+    export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
+else
+    echo "Warning: mkcert not found. HTTPS certificates may not work properly."
+fi
 
 pnpm with-dev-env pnpm heroku local -f scripts/Procfile.dev

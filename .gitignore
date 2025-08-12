@@ -53,8 +53,6 @@ public/sdk*.js.LICENSE.txt
 
 db/seeds/localSeeds.ts
 
-scripts/docker/tmp/
-scripts/docker/local-nginx/certs/*
 
 # Playwright
 playwright/

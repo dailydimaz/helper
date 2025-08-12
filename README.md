@@ -44,10 +44,10 @@
 
 ## Prerequisites
 
-- **Node.js** - Version 18+ ([see .node-version](.node-version))
-- **pnpm** - Package manager (Version 8+)
+- **Node.js** - Version 22 ([see .node-version](.node-version))
+- **pnpm** - Package manager (Version 10.8.0+)
 - **PostgreSQL** - Database server (Version 14+)
-- **Docker** - For local development services
+- **mkcert** - For HTTPS development certificates (optional but recommended)
 
 ## Quick Start
 
@@ -64,7 +64,25 @@ pnpm install
 
 ### 2. Database Setup
 
-#### Option A: Local PostgreSQL with Docker
+#### Option A: Local PostgreSQL (Native Installation)
+```bash
+# macOS (with Homebrew)
+brew install postgresql@14
+brew services start postgresql@14
+
+# Ubuntu/Debian
+sudo apt update
+sudo apt install postgresql-14 postgresql-contrib-14
+
+# Create database and user
+createdb helperai_dev
+psql helperai_dev -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+```
+
+#### Option B: Managed PostgreSQL
+Use any PostgreSQL provider (Neon, Railway, PlanetScale, etc.)
+
+#### Option C: Local PostgreSQL with Docker (if preferred)
 ```bash
 # Start PostgreSQL with required extensions
 docker run --name helperai-postgres \
@@ -72,15 +90,12 @@ docker run --name helperai-postgres \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  -d pgvector/pgvector:pg15
+  -d postgres:14
 
-# Install additional extensions (if needed)
+# Install additional extensions
 docker exec -it helperai-postgres psql -U postgres -d helperai_dev \
-  -c "CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+  -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 ```
-
-#### Option B: Managed PostgreSQL
-Use any PostgreSQL provider that supports extensions (Supabase, Neon, Railway, etc.)
 
 ### 3. Environment Configuration
 
@@ -98,8 +113,8 @@ JWT_EXPIRES_IN="7d"
 OPENAI_API_KEY="sk-your-openai-api-key"
 
 # Application URLs
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+NEXT_PUBLIC_APP_URL="https://helperai.dev:3000"
+NEXT_PUBLIC_API_URL="https://helperai.dev:3000/api"
 
 # Optional: Email Service (Resend)
 RESEND_API_KEY="re_your-resend-api-key"
@@ -137,13 +152,13 @@ pnpm db:seed
 pnpm dev
 
 # Application will be available at:
-# http://localhost:3000 - Main application
-# https://helperai.dev - With SSL (requires certificate setup)
+# https://helperai.dev:3000 - Main application with HTTPS
+# http://localhost:3000 - HTTP fallback
 ```
 
-### 6. SSL Certificate Setup (Optional)
+### 6. HTTPS Development Setup (Recommended)
 
-For local HTTPS development:
+For secure local development with HTTPS:
 
 ```bash
 # Install mkcert (macOS)
@@ -152,14 +167,14 @@ brew install mkcert nss
 # Install mkcert (Windows with Chocolatey)
 choco install mkcert
 
-# Generate certificates
-pnpm generate-ssl-certificates
+# Install mkcert (Ubuntu/Debian)
+apt install mkcert
 
-# Start with HTTPS
+# Certificates are automatically generated when you run:
 pnpm dev
 ```
 
-Access the application at **https://helperai.dev** 🚀
+The development server will run with HTTPS at **https://helperai.dev:3000** 🚀
 
 ## Development Workflows
 
