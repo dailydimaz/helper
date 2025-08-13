@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 // Removed Supabase client import - now handled by JWT auth system
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
+import { api, ApiError } from "@/lib/api/client";
 
 export function OnboardingForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
   const [email, setEmail] = useState("");
@@ -20,27 +20,29 @@ export function OnboardingForm({ className, ...props }: React.ComponentPropsWith
   const router = useRouter();
   const { theme, systemTheme } = useTheme();
 
-  const onboardMutation = api.user.onboard.useMutation({
-    onSuccess: async (data) => {
-      // JWT token is set via cookie during onboard mutation
-      // No additional client-side auth verification needed
-      router.push("/mine");
-    },
-    onError: (error) => {
-      setFormError(error.message);
-      setIsLoading(false);
-    },
-  });
-
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setFormError(null);
 
-    onboardMutation.mutate({
-      email,
-      displayName: displayName.trim(),
-    });
+    try {
+      await api.user.onboard({
+        email,
+        displayName: displayName.trim(),
+        password: "temp-password-123", // TODO: Add password field
+      });
+      
+      // JWT token is set via cookie during onboard mutation
+      // No additional client-side auth verification needed
+      router.push("/mine");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setFormError(error.message);
+      } else {
+        setFormError("An unexpected error occurred");
+      }
+      setIsLoading(false);
+    }
   };
 
   return (

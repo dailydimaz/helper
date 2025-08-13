@@ -21,7 +21,7 @@ export async function getLogin(): Promise<AuthUser | null> {
 
     const { payload } = await jwtVerify(token, JWT_SECRET);
     return {
-      id: payload.userId as string,
+      id: payload.sub as string,
       email: payload.email as string,
       displayName: payload.displayName as string,
       permissions: payload.permissions as string,
@@ -35,6 +35,11 @@ export async function getLogin(): Promise<AuthUser | null> {
 export async function setAuthToken(token: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, COOKIE_OPTIONS);
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(COOKIE_NAME)?.value || null;
 }
 
 export async function clearAuthToken(): Promise<void> {
