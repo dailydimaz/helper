@@ -1,3 +1,0 @@
--- Queue functionality replaced with lightweight job table
--- See jobs table created in subsequent migrations
--- No longer using pgmq for job queue management
