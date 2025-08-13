@@ -9,7 +9,7 @@ Thanks for your interest in contributing! This document will help you get starte
 1. Set up the repository
 
 ```bash
-git clone https://github.com/antiwork/helper.git
+git clone https://github.com/dailydimaz/helper.git
 ```
 
 2. Set up your development environment
@@ -163,7 +163,7 @@ A great bug report includes:
 
 - Check existing discussions/issues/PRs before creating new ones
 - Start a discussion for questions or ideas
-- Open an [issue](https://github.com/antiwork/helper/issues) for bugs or problems
+- Open an [issue](https://github.com/dailydimaz/helper/issues) for bugs or problems
 
 ## License
 
