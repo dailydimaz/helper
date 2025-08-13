@@ -29,3 +29,6 @@ export const agentMessagesTableRelations = relations(agentMessagesTable, ({ one 
     references: [agentThreadsTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const agentMessages = agentMessagesTable;

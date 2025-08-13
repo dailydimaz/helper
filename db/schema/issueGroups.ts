@@ -21,3 +21,6 @@ export const issueGroupsTable = pgTable(
 export const issueGroupsTableRelations = relations(issueGroupsTable, ({ many }) => ({
   conversations: many(conversationsTable),
 }));
+
+// Backwards compatibility export
+export const issueGroups = issueGroupsTable;

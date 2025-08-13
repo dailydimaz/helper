@@ -2,10 +2,8 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import useSWR, { SWRConfiguration } from "swr";
-import { PerformanceMonitor } from "@/lib/database/optimizations";
 
-// Performance tracking for table operations
-const performanceMonitor = PerformanceMonitor.getInstance();
+// Performance tracking removed for client-side compatibility
 
 interface UseTableOptions {
   pathname: string;
@@ -53,7 +51,7 @@ export function useTable({
       startTimeRef.current = Date.now();
     } else if (startTimeRef.current) {
       const duration = Date.now() - startTimeRef.current;
-      performanceMonitor.recordSlowQuery(`Table Data: ${url}`, duration);
+      console.warn('Slow query detected:', { query: `Table Data: ${url}`, duration });
     }
   }, []);
 
@@ -79,7 +77,7 @@ export function useTable({
   const dataSwr = useSWR(dataURL, {
     ...swrConfig,
     onLoadingSlow: (key) => {
-      performanceMonitor.recordSlowQuery(`Slow Table Load: ${key}`, 5000);
+      console.warn('Slow query detected:', { query: `Slow Table Load: ${key}`, duration: 5000 });
     },
   });
 
@@ -173,7 +171,7 @@ export function useItem<T = any>(
       startTimeRef.current = Date.now();
     } else if (startTimeRef.current) {
       const duration = Date.now() - startTimeRef.current;
-      performanceMonitor.recordSlowQuery(`Item Fetch: ${url}`, duration);
+      console.warn('Slow query detected:', { query: `Item Fetch: ${url}`, duration });
     }
   }, []);
   
@@ -263,11 +261,11 @@ export function useRealTimeTable(options: UseTableOptions & {
  * Performance monitoring hook for table operations
  */
 export function useTablePerformance() {
-  const monitor = PerformanceMonitor.getInstance();
+  // Performance monitoring removed for client-side compatibility
   
   return {
-    getMetrics: () => monitor.getPerformanceReport(),
-    getSlowQueries: () => monitor.getSlowQueries(),
-    clearMetrics: () => monitor.getSlowQueries().length = 0,
+    getMetrics: () => ({ message: 'Performance metrics not available on client-side' }),
+    getSlowQueries: () => [],
+    clearMetrics: () => {}, // No-op for client-side
   };
 }

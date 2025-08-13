@@ -37,3 +37,6 @@ export const conversationEventsTableRelations = relations(conversationEventsTabl
     references: [conversationsTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const conversationEvents = conversationEventsTable;

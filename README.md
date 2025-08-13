@@ -44,14 +44,29 @@
 
 ## Prerequisites
 
-- **Node.js** - Version 22 ([see .node-version](.node-version))
-- **pnpm** - Package manager (Version 10.8.0+)
-- **PostgreSQL** - Database server (Version 14+)
-- **mkcert** - For HTTPS development certificates (optional but recommended)
+- **Node.js** - Version 22.14.0 (exact version required - [see .node-version](.node-version))
+- **pnpm** - Package manager (Version 10.8.0 exact)
+- **PostgreSQL** - Database server (Version 15+ with pgvector extension)
+- **mkcert** - For HTTPS development certificates (optional)
 
 ## Quick Start
 
-### 1. Clone and Install
+### 1. Environment Setup
+
+```bash
+# Install Node.js v22.14.0 (use nvm for version management)
+nvm install 22.14.0
+nvm use 22.14.0
+
+# Install pnpm v10.8.0
+npm install -g pnpm@10.8.0
+
+# Verify versions
+node --version  # Should show v22.14.0
+pnpm --version  # Should show 10.8.0
+```
+
+### 2. Clone and Install
 
 ```bash
 # Clone the repository
@@ -62,21 +77,24 @@ cd helper
 pnpm install
 ```
 
-### 2. Database Setup
+### 3. Database Setup
 
-#### Option A: Local PostgreSQL (Native Installation)
+#### Option A: Local PostgreSQL (Recommended for Development)
 ```bash
 # macOS (with Homebrew)
-brew install postgresql@14
-brew services start postgresql@14
+brew install postgresql@15
+brew install pgvector
+brew services start postgresql@15
 
 # Ubuntu/Debian
 sudo apt update
-sudo apt install postgresql-14 postgresql-contrib-14
+sudo apt install postgresql-15 postgresql-contrib-15
+# Install pgvector separately (see pgvector docs)
 
-# Create database and user
-createdb helperai_dev
-psql helperai_dev -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+# Create database and enable extensions
+createdb helper
+psql -d helper -c "CREATE EXTENSION IF NOT EXISTS vector;"
+psql -d helper -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 ```
 
 #### Option B: Managed PostgreSQL
@@ -84,37 +102,47 @@ Use any PostgreSQL provider (Neon, Railway, PlanetScale, etc.)
 
 #### Option C: Local PostgreSQL with Docker (if preferred)
 ```bash
-# Start PostgreSQL with required extensions
-docker run --name helperai-postgres \
-  -e POSTGRES_DB=helperai_dev \
+# Start PostgreSQL with pgvector extension
+docker run --name helper-postgres \
+  -e POSTGRES_DB=helper \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  -d postgres:14
+  -d pgvector/pgvector:pg15
 
 # Install additional extensions
-docker exec -it helperai-postgres psql -U postgres -d helperai_dev \
+docker exec -it helper-postgres psql -U postgres -d helper \
+  -c "CREATE EXTENSION IF NOT EXISTS vector;" \
   -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 ```
 
-### 3. Environment Configuration
+### 4. Environment Configuration
 
 Create `.env.local` with the following configuration:
 
 ```bash
-# Database Configuration
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/helperai_dev"
+# Database Configuration - Local PostgreSQL
+DATABASE_URL="postgresql://your-username@localhost:5432/helper"
 
-# Authentication
-JWT_SECRET="your-super-secure-jwt-secret-at-least-32-characters-long"
+# JWT Authentication (Development)
+JWT_SECRET="development-jwt-secret-key-at-least-32-characters-long"
 JWT_EXPIRES_IN="7d"
 
-# OpenAI (Required)
-OPENAI_API_KEY="sk-your-openai-api-key"
+# AI Integration (Development) 
+OPENAI_API_KEY="sk-test-development-key-for-compilation"
+
+# Encryption (Development)
+ENCRYPT_COLUMN_SECRET="development-encryption-secret-32-chars"
 
 # Application URLs
-NEXT_PUBLIC_APP_URL="https://helperai.dev:3000"
-NEXT_PUBLIC_API_URL="https://helperai.dev:3000/api"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+NEXT_PUBLIC_DEV_HOST="http://localhost:3000"
+
+# Development settings
+DRIZZLE_LOGGING="1"
+NODE_ENV="development"
+IS_TEST_ENV="1"
 
 # Optional: Email Service (Resend)
 RESEND_API_KEY="re_your-resend-api-key"
@@ -135,28 +163,34 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 GITHUB_PRIVATE_KEY="your-github-private-key"
 ```
 
-### 4. Database Migration and Seeding
+### 5. Database Migration and Setup
 
 ```bash
 # Run database migrations
 pnpm db:migrate
 
+# Setup lightweight cron system
+pnpm db:setup-cron
+
 # Seed with sample data (optional for development)
 pnpm db:seed
 ```
 
-### 5. Development Server
+### 6. Development Server
 
 ```bash
-# Start the development server
+# Start with proper environment loading (recommended)
+pnpm with-dev-env next dev --port 3000
+
+# Or use the development script (includes SSL setup)
 pnpm dev
 
 # Application will be available at:
-# https://helperai.dev:3000 - Main application with HTTPS
-# http://localhost:3000 - HTTP fallback
+# http://localhost:3000 - Main application
+# https://helperai.dev:3000 - HTTPS (if mkcert is installed)
 ```
 
-### 6. HTTPS Development Setup (Recommended)
+### 7. HTTPS Development Setup (Optional)
 
 For secure local development with HTTPS:
 
@@ -175,6 +209,15 @@ pnpm dev
 ```
 
 The development server will run with HTTPS at **https://helperai.dev:3000** 🚀
+
+## Verification
+
+After setup, verify everything is working:
+
+- Navigate to http://localhost:3000
+- You should see the onboarding form (if no mailboxes exist)
+- Check the console for database connection logs
+- Verify no errors in the browser console
 
 ## Development Workflows
 
@@ -251,11 +294,12 @@ pnpm start
 ### Environment Requirements
 
 **Production Database:**
-- PostgreSQL 14+ with extensions: `vector`, `pg_trgm`, `pgmq` (if available)
+- PostgreSQL 15+ with extensions: `vector`, `pg_trgm`, `pgmq` (if available)
 - Recommended providers: Supabase, Neon, Railway, AWS RDS
 
 **Application Server:**
-- Node.js 18+
+- Node.js v22.14.0 (exact version required)
+- pnpm v10.8.0
 - 2GB+ RAM
 - SSD storage for file uploads
 - HTTPS certificate

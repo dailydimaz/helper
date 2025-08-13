@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import crypto from "@/lib/crypto-polyfill";
 import { URLSearchParams } from "url";
 import { z } from "zod";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";

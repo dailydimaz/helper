@@ -28,3 +28,6 @@ export const gmailSupportEmailsTable = pgTable(
 export const gmailSupportEmailsTableRelations = relations(gmailSupportEmailsTable, ({ many }) => ({
   mailboxes: many(mailboxesTable),
 }));
+
+// Backwards compatibility export
+export const gmailSupportEmails = gmailSupportEmailsTable;

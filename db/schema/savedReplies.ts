@@ -33,3 +33,6 @@ export const savedRepliesTableRelations = relations(savedRepliesTable, ({ one })
     references: [mailboxesTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const savedReplies = savedRepliesTable;

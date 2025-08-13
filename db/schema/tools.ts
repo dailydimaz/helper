@@ -59,3 +59,6 @@ export const toolsTableRelations = relations(toolsTable, ({ one }) => ({
     references: [toolApisTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const tools = toolsTable;

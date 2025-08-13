@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash } from "@/lib/crypto-polyfill";
 import { z } from "zod";
 import { assertDefined } from "@/components/utils/assert";
 import { MINI_MODEL } from "@/lib/ai/core";

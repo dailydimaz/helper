@@ -1,8 +1,20 @@
 import { customType } from "drizzle-orm/pg-core";
 import { symmetricDecrypt, symmetricEncrypt } from "@/db/lib/crypto";
-import { env } from "@/lib/env";
 
-const encryptColumnSecret = env.ENCRYPT_COLUMN_SECRET;
+// Lazy-load environment variable to avoid client-side bundling
+let encryptColumnSecret: string | null = null;
+
+function getEncryptColumnSecret(): string {
+  if (encryptColumnSecret === null) {
+    // Only access env when actually needed (server-side only)
+    if (typeof window !== 'undefined') {
+      throw new Error('Encrypted fields cannot be used on the client side');
+    }
+    const { env } = eval('require')("@/lib/env");
+    encryptColumnSecret = env.ENCRYPT_COLUMN_SECRET;
+  }
+  return encryptColumnSecret;
+}
 
 export const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
   dataType() {
@@ -15,7 +27,7 @@ export const encryptedField = customType<{ data: string }>({
     return "bytea";
   },
   toDriver(value: string): Buffer {
-    return Buffer.from(symmetricEncrypt(value, encryptColumnSecret));
+    return Buffer.from(symmetricEncrypt(value, getEncryptColumnSecret()));
   },
   fromDriver(value: unknown): string {
     return decryptFieldValue(value);
@@ -23,16 +35,17 @@ export const encryptedField = customType<{ data: string }>({
 });
 
 export const decryptFieldValue = (value: unknown): string => {
+  const secret = getEncryptColumnSecret();
   if (typeof value === "string") {
     // Handle PostgreSQL bytea hex format with \x prefix
     if (value.startsWith("\\x")) {
       const hexString = value.slice(2); // Remove '\x' prefix
       const bufferValue = Buffer.from(hexString, "hex");
-      return symmetricDecrypt(bufferValue.toString("utf-8"), encryptColumnSecret);
+      return symmetricDecrypt(bufferValue.toString("utf-8"), secret);
     }
-    return symmetricDecrypt(value, encryptColumnSecret);
+    return symmetricDecrypt(value, secret);
   } else if (Buffer.isBuffer(value)) {
-    return symmetricDecrypt(value.toString("utf-8"), encryptColumnSecret);
+    return symmetricDecrypt(value.toString("utf-8"), secret);
   }
 
   throw new Error(`Unexpected value type: ${typeof value}`);

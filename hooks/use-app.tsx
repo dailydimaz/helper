@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext } from "react";
 import { SWRConfig } from "swr";
-import { useApi } from "./use-api";
+import { useApi, BasePathProvider } from "./use-api";
 import { Toaster } from "sonner";
 
 function useAppContext({ basePath }: { basePath: string }) {
@@ -24,7 +24,9 @@ export const AppContextProvider = ({
   const values = useAppContext({ basePath });
   return (
     <AppContext.Provider value={values}>
-      <SWRProvider>{children}</SWRProvider>
+      <BasePathProvider basePath={basePath}>
+        <SWRProvider>{children}</SWRProvider>
+      </BasePathProvider>
     </AppContext.Provider>
   );
 };

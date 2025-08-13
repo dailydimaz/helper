@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
@@ -75,7 +75,8 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
   return result;
 });
 
-const sentryMiddleware = t.middleware(Sentry.trpcMiddleware({ attachRpcInput: true }));
+// const sentryMiddleware = t.middleware(Sentry.trpcMiddleware({ attachRpcInput: true }));
+const sentryMiddleware = t.middleware(async ({ next }) => next());
 
 /**
  * Public (unauthed) procedure

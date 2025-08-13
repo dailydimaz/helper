@@ -39,3 +39,6 @@ export const filesTableRelations = relations(filesTable, ({ one }) => ({
     references: [notesTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const files = filesTable;

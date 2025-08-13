@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
+import { randomBytes, timingSafeEqual, createHash } from "@/lib/crypto-polyfill";
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "@/lib/env";
 

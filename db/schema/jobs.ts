@@ -33,3 +33,7 @@ export type NewJob = typeof jobsTable.$inferInsert;
 
 export type HttpRequest = typeof httpRequestsTable.$inferSelect;
 export type NewHttpRequest = typeof httpRequestsTable.$inferInsert;
+
+// Backwards compatibility exports
+export const jobs = jobsTable;
+export const httpRequests = httpRequestsTable;

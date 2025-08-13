@@ -42,3 +42,6 @@ export const messageNotificationsTableRelations = relations(messageNotifications
     references: [platformCustomersTable.email],
   }),
 }));
+
+// Backwards compatibility export
+export const messageNotifications = messageNotificationsTable;

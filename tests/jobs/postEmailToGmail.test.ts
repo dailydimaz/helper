@@ -3,7 +3,7 @@ import { conversationFactory } from "@tests/support/factories/conversations";
 import { fileFactory } from "@tests/support/factories/files";
 import { gmailSupportEmailFactory } from "@tests/support/factories/gmailSupportEmails";
 import { userFactory } from "@tests/support/factories/users";
-import { eq } from "drizzle-orm/expressions";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";

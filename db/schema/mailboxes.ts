@@ -55,3 +55,6 @@ export const mailboxesTableRelations = relations(mailboxesTable, ({ one, many })
   }),
   faqs: many(faqsTable),
 }));
+
+// Backwards compatibility export
+export const mailboxes = mailboxesTable;

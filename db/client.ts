@@ -4,10 +4,7 @@ import { PgTransaction } from "drizzle-orm/pg-core";
 import { Pool, PoolConfig } from "pg";
 import * as schema from "@/db/schema";
 import { env } from "@/lib/env";
-import { PerformanceMonitor } from "@/lib/database/optimizations";
-
-// Performance monitoring
-const performanceMonitor = PerformanceMonitor.getInstance();
+// Performance monitoring temporarily disabled
 
 const fullSchema = { ...schema };
 
@@ -15,49 +12,28 @@ export const createDbClient = (url: string, options: PoolConfig = {}) => {
   // https://github.com/brianc/node-postgres/issues/2558
   const urlWithoutVerification = url.replace("?sslmode=require", "?sslmode=no-verify");
   
-  // Optimized pool configuration for production performance
+  // Simplified pool configuration for development
   const poolConfig: PoolConfig = {
     connectionString: urlWithoutVerification,
-    // Connection pool optimization
-    min: process.env.NODE_ENV === 'production' ? 5 : 2,
-    max: process.env.NODE_ENV === 'production' ? 20 : 10,
+    // Minimal pool for development stability
+    min: 0,
+    max: 3,
     idleTimeoutMillis: 30000, // 30 seconds
-    connectionTimeoutMillis: 5000, // 5 seconds
-    acquireTimeoutMillis: 10000, // 10 seconds
-    // Connection validation
-    allowExitOnIdle: false,
-    // Performance monitoring
-    log: (msg) => {
-      if (msg.includes('error') || msg.includes('timeout')) {
-        console.error('Database pool error:', msg);
-      }
-    },
+    connectionTimeoutMillis: 10000, // 10 seconds
+    acquireTimeoutMillis: 5000, // 5 seconds
+    allowExitOnIdle: true,
     ...options,
   };
   
   const pool = new Pool(poolConfig);
   
-  // Pool event monitoring for performance insights
+  // Essential pool event monitoring
   pool.on('connect', (client) => {
-    console.debug('New database connection established');
     client.query('SET application_name = \'helperai\'');
-  });
-  
-  pool.on('acquire', () => {
-    const activeConnections = pool.totalCount;
-    const idleConnections = pool.idleCount;
-    const waitingClients = pool.waitingCount;
-    
-    if (waitingClients > 5) {
-      console.warn(`High connection contention: ${waitingClients} waiting clients`);
-    }
-    
-    console.debug(`Pool status: Active: ${activeConnections}, Idle: ${idleConnections}, Waiting: ${waitingClients}`);
   });
   
   pool.on('error', (err) => {
     console.error('Database pool error:', err);
-    performanceMonitor.recordSlowQuery('Database Pool Error', 0);
   });
   
   // Enhanced drizzle client with performance monitoring
@@ -114,11 +90,11 @@ export const createDbClient = (url: string, options: PoolConfig = {}) => {
       try {
         const result = await queryFn();
         const duration = Date.now() - startTime;
-        performanceMonitor.recordSlowQuery(queryName, duration);
+        console.warn('Slow query detected:', { query: queryName, duration });
         return result;
       } catch (error) {
         const duration = Date.now() - startTime;
-        performanceMonitor.recordSlowQuery(`${queryName} (ERROR)`, duration);
+        console.warn('Slow query detected:', { query: `${queryName} (ERROR)`, duration });
         throw error;
       }
     },
@@ -143,8 +119,8 @@ declare global {
 
 const db = global.drizzleGlobal ?? createDbClient(env.DATABASE_URL);
 
-// Graceful shutdown handling
-if (typeof process !== 'undefined') {
+// Graceful shutdown handling (only in Node.js runtime, not Edge Runtime)
+if (typeof process !== 'undefined' && typeof process.on === 'function') {
   process.on('SIGINT', async () => {
     console.log('Received SIGINT, shutting down gracefully...');
     await db.shutdown();

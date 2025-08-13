@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { eq } from "drizzle-orm";
 import { ParsedMailbox } from "email-addresses";
 import { GaxiosResponse } from "gaxios";
@@ -189,7 +189,8 @@ export const handleGmailWebhookEvent = async ({ body, headers }: any) => {
   if (!mailbox || !gmailSupportEmail?.accessToken || !gmailSupportEmail.refreshToken) {
     return `Valid gmail support email record not found for ${data.emailAddress}`;
   }
-  Sentry.setContext("gmailSupportEmail info", {
+  // Sentry.setContext removed for local development
+  console.log("gmailSupportEmail info", {
     mailboxId: mailbox.id,
     gmailSupportEmailId: gmailSupportEmail.id,
     gmailSupportEmailHistoryId: gmailSupportEmail.historyId,

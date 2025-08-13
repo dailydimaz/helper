@@ -1,7 +1,15 @@
 "use client";
-import { useEffect, useRef, useCallback, useMemo } from "react";
-import { useApp } from "./use-app";
-import { PerformanceMonitor } from "@/lib/database/optimizations";
+import { useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
+// Performance monitoring removed for client-side compatibility
+
+// BasePath context to avoid circular dependency
+const BasePathContext = createContext<string>("");
+
+export const useBasePath = () => useContext(BasePathContext);
+
+export const BasePathProvider = ({ children, basePath }: { children: React.ReactNode; basePath: string }) => (
+  <BasePathContext.Provider value={basePath}>{children}</BasePathContext.Provider>
+);
 
 // Request deduplication cache
 const requestCache = new Map<string, { promise: Promise<any>; timestamp: number }>();
@@ -17,9 +25,9 @@ type Options = RequestInit & {
 };
 
 export const useApi = () => {
-  const { basePath } = useApp();
+  const basePath = useBasePath();
   const abortRef = useRef<Map<AbortController, boolean>>(new Map());
-  const performanceMonitor = PerformanceMonitor.getInstance();
+  // Performance monitoring removed for client-side compatibility
 
   // Generate cache key for request deduplication
   const generateCacheKey = useCallback((method: string, url: string, body?: any) => {
@@ -99,11 +107,7 @@ export const useApi = () => {
       const response = await fetch(fullUrl, options);
       const duration = Date.now() - startTime;
       
-      // Track API performance
-      performanceMonitor.recordSlowQuery(
-        `API ${options.method} ${url}`,
-        duration
-      );
+      // Performance tracking removed for client-side compatibility
 
       if (timeoutId) clearTimeout(timeoutId);
 
@@ -143,10 +147,7 @@ export const useApi = () => {
         return requestWithRetry(url, options, attempt + 1);
       }
 
-      performanceMonitor.recordSlowQuery(
-        `API ${options.method} ${url} (ERROR)`,
-        duration
-      );
+      // Performance tracking removed for client-side compatibility
 
       throw {
         ...error,
@@ -158,7 +159,7 @@ export const useApi = () => {
         abortRef.current.delete(ctrl);
       }
     }
-  }, [basePath, performanceMonitor]);
+  }, [basePath]);
 
   const request = useCallback(async (url: string, options: Options) => {
     // Request deduplication for GET requests
@@ -215,8 +216,8 @@ export const useApi = () => {
     },
 
     // Get performance metrics
-    getMetrics: () => performanceMonitor.getPerformanceReport(),
-  }), [request, handleOptions, performanceMonitor]);
+    getMetrics: () => ({ message: 'Performance metrics not available on client-side' }),
+  }), [request, handleOptions]);
 
   // Cleanup on unmount
   useEffect(() => {

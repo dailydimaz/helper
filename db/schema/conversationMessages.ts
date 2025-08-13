@@ -100,3 +100,6 @@ export const conversationMessagesTableRelations = relations(conversationMessages
 
   notifications: many(messageNotificationsTable),
 }));
+
+// Backwards compatibility export
+export const conversationMessages = conversationMessagesTable;

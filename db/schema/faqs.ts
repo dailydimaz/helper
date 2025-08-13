@@ -39,3 +39,6 @@ export const faqsTableRelations = relations(faqsTable, ({ one }) => ({
     references: [conversationMessagesTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const faqs = faqsTable;

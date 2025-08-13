@@ -32,3 +32,6 @@ export const toolApisTableRelations = relations(toolApisTable, ({ many, one }) =
 
 export { toolApisTable };
 export type ToolApi = typeof toolApisTable.$inferSelect;
+
+// Backwards compatibility export
+export const toolApis = toolApisTable;

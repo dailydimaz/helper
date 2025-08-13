@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import { createHmacSha256, createHmacSha256Base64, timingSafeEqual } from './crypto-utils';
 
 export type HelperAuthParams = {
   email: string;
@@ -28,7 +28,7 @@ function isValidEmail(email: string): boolean {
  * @returns Object with email, timestamp, and HMAC hash
  * @throws HelperAuthError if HMAC secret is not provided or if input validation fails
  */
-export function generateHelperAuth({ email, hmacSecret }: HelperAuthParams) {
+export async function generateHelperAuth({ email, hmacSecret }: HelperAuthParams) {
   if (!email) {
     throw new HelperAuthError("Email is required");
   }
@@ -37,14 +37,14 @@ export function generateHelperAuth({ email, hmacSecret }: HelperAuthParams) {
     throw new HelperAuthError("Invalid email format");
   }
 
-  const finalHmacSecret = hmacSecret || process.env.HELPER_HMAC_SECRET;
+  const finalHmacSecret = hmacSecret || (typeof process !== 'undefined' ? process.env?.HELPER_HMAC_SECRET : undefined);
   if (!finalHmacSecret) {
     throw new HelperAuthError("HMAC secret must be provided via parameter or HELPER_HMAC_SECRET environment variable");
   }
 
   const timestamp = Date.now();
 
-  const hmac = crypto.createHmac("sha256", finalHmacSecret).update(`${email}:${timestamp}`).digest("hex");
+  const hmac = await createHmacSha256(finalHmacSecret, `${email}:${timestamp}`);
 
   return {
     email,
@@ -53,7 +53,7 @@ export function generateHelperAuth({ email, hmacSecret }: HelperAuthParams) {
   };
 }
 
-export function verifyHmac(jsonBody: unknown, authorizationHeader: string | null | undefined, hmacSecret: string) {
+export async function verifyHmac(jsonBody: unknown, authorizationHeader: string | null | undefined, hmacSecret: string) {
   if (
     !jsonBody ||
     typeof jsonBody !== "object" ||
@@ -71,12 +71,9 @@ export function verifyHmac(jsonBody: unknown, authorizationHeader: string | null
     throw new Error("Request timestamp is too old for Helper HMAC verification");
   }
 
-  const hmacDigest = crypto.createHmac("sha256", hmacSecret).update(JSON.stringify(jsonBody)).digest();
-  const hmacSignatureFromBody = hmacDigest.toString("base64");
+  const hmacSignatureFromBody = await createHmacSha256Base64(hmacSecret, JSON.stringify(jsonBody));
 
-  if (
-    !crypto.timingSafeEqual(Buffer.from(hmacSignatureFromBody), Buffer.from(authorizationHeader?.split(" ")[1] ?? ""))
-  ) {
+  if (!timingSafeEqual(hmacSignatureFromBody, authorizationHeader?.split(" ")[1] ?? "")) {
     throw new Error("Invalid HMAC signature for Helper HMAC verification");
   }
 }

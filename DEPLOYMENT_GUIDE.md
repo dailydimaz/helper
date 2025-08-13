@@ -1,10 +1,168 @@
-# Production Deployment Guide
+# Deployment Guide
 
 **This software is derived from the source code for Gumroad, Inc. Helper™ software.**
 
-This guide provides comprehensive instructions for deploying the Helper™ AI lightweight application to production environments. The application has been optimized for performance, security, and maintainability with the new PostgreSQL + Drizzle ORM architecture.
+This guide provides comprehensive instructions for both local development and production deployment of the Helper™ AI lightweight application. The application has been optimized for performance, security, and maintainability with the new PostgreSQL + Drizzle ORM architecture.
 
 > **Trademark Notice**: Helper™ is a trademark of Gumroad, Inc. This derivative software is not officially endorsed or distributed by Gumroad, Inc.
+
+## Local Development Setup
+
+### Prerequisites
+
+- **Node.js**: v22.14.0 (use nvm for version management)
+- **pnpm**: v10.8.0 
+- **PostgreSQL**: 15.x with pgvector extension
+- **Git**: Latest version
+
+### 1. Environment Setup
+
+```bash
+# Install Node.js v22.14.0
+nvm install 22.14.0
+nvm use 22.14.0
+
+# Install pnpm v10.8.0
+npm install -g pnpm@10.8.0
+
+# Verify versions
+node --version  # Should show v22.14.0
+pnpm --version  # Should show 10.8.0
+```
+
+### 2. PostgreSQL Setup
+
+#### Install PostgreSQL 15 with pgvector
+
+```bash
+# macOS (using Homebrew)
+brew install postgresql@15
+brew install pgvector
+
+# Start PostgreSQL service
+brew services start postgresql@15
+
+# Create development database
+createdb helper
+```
+
+#### Enable Required Extensions
+
+```bash
+# Connect to database
+psql -d helper -c "CREATE EXTENSION IF NOT EXISTS vector;"
+psql -d helper -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+```
+
+### 3. Project Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd helper
+
+# Install dependencies
+pnpm install
+
+# Set up environment files
+cp .env.local.sample .env.local
+cp .env.development.sample .env.development
+```
+
+### 4. Environment Configuration
+
+Create or update your `.env.local`:
+
+```bash
+# Database Configuration - Local PostgreSQL
+DATABASE_URL="postgresql://your-username@localhost:5432/helper"
+
+# JWT Authentication (Development)
+JWT_SECRET="development-jwt-secret-key-at-least-32-characters-long"
+JWT_EXPIRES_IN="7d"
+
+# AI Integration (Development)
+OPENAI_API_KEY="sk-test-development-key-for-compilation"
+
+# Encryption (Development)
+ENCRYPT_COLUMN_SECRET="development-encryption-secret-32-chars"
+
+# Application URLs
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+NEXT_PUBLIC_DEV_HOST="http://localhost:3000"
+
+# Development settings
+DRIZZLE_LOGGING="1"
+NODE_ENV="development"
+IS_TEST_ENV="1"
+```
+
+### 5. Database Migration
+
+```bash
+# Run database migrations
+pnpm db:migrate
+
+# Setup lightweight cron system
+pnpm db:setup-cron
+```
+
+### 6. Start Development Server
+
+```bash
+# Start with proper environment loading
+pnpm with-dev-env next dev --port 3000
+
+# Or use the development script (includes SSL setup)
+pnpm run dev
+```
+
+### 7. Verify Setup
+
+- Navigate to http://localhost:3000
+- You should see the onboarding form (if no mailboxes exist)
+- Check database connection in logs
+
+### Common Local Development Issues
+
+#### Node.js Version Mismatch
+```bash
+# Ensure you're using Node.js v22.14.0
+nvm use 22.14.0
+```
+
+#### Database Connection Issues
+```bash
+# Check PostgreSQL is running
+brew services list | grep postgresql
+
+# Test database connection
+psql -d helper -c "SELECT 1;"
+```
+
+#### Environment Variables Not Loading
+```bash
+# Use the proper environment loading command
+pnpm with-dev-env next dev --port 3000
+```
+
+#### Missing SSL Certificates (Optional)
+```bash
+# Install mkcert for local HTTPS (optional)
+brew install mkcert
+mkcert -install
+```
+
+### Development Workflow
+
+1. **Make changes** to your code
+2. **Run tests** with `pnpm test`
+3. **Type check** with `pnpm typecheck`
+4. **Database changes** require `pnpm db:migrate`
+5. **Commit changes** with descriptive messages
+
+---
 
 ## Pre-Deployment Checklist
 
@@ -55,7 +213,8 @@ Ensure the following items are completed before production deployment:
 
 #### Application Requirements
 
-- Node.js >= 18.x
+- Node.js v22.14.0 (exact version required)
+- pnpm v10.8.0 (package manager)
 - 2GB+ RAM minimum
 - SSD storage for file uploads
 - HTTPS certificate
@@ -87,8 +246,8 @@ NEXT_PUBLIC_API_URL="https://yourdomain.com/api"
 RESEND_API_KEY="your-resend-api-key"
 RESEND_FROM_ADDRESS="noreply@yourdomain.com"
 
-# Monitoring (Optional)
-NEXT_PUBLIC_SENTRY_DSN="your-sentry-dsn"
+# Monitoring (Optional) - Note: Sentry dependency removed for local development
+# NEXT_PUBLIC_SENTRY_DSN="your-sentry-dsn"
 ```
 
 #### Optional Integration Variables

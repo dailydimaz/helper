@@ -91,3 +91,6 @@ export type DbOrAuthUser = {
   email?: string | null;
   user_metadata: Record<string, any> | null;
 };
+
+// Backwards compatibility exports
+export const users = usersTable;

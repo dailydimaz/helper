@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "@/lib/crypto-polyfill";
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "@/lib/env";
 

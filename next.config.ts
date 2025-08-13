@@ -16,7 +16,7 @@ let nextConfig: NextConfig = {
   allowedDevOrigins: ["https://helperai.dev", "https://localhost:3000"],
   // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-8875108
   transpilePackages: ["next-auth"],
-  serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm"],
+  serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm", "node:crypto", "node-gyp-build"],
 
   // Performance optimizations
   compress: true,
@@ -43,6 +43,7 @@ let nextConfig: NextConfig = {
     webpackBuildWorker: true,
     parallelServerCompiles: true,
     parallelServerBuildTraces: true,
+    serverComponentsExternalPackages: ['node:crypto'],
   },
   outputFileTracingIncludes: {
     "/widget/sdk.js": ["./public/**/*"],
@@ -134,6 +135,7 @@ let nextConfig: NextConfig = {
       "path": false,
       "os": false,
       "crypto": false,
+      "node:crypto": false,
       "child_process": false,
       "worker_threads": false,
       "cluster": false,
@@ -147,9 +149,21 @@ let nextConfig: NextConfig = {
       "constants": false,
     };
 
-    config.plugins.push(new webpack.IgnorePlugin({
-      resourceRegExp: /^pg-native$|^cloudflare:sockets$/,
-    }))
+    // Add alias for node:crypto to prevent client-side bundling
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "node:crypto": false,
+    };
+
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^pg-native$|^cloudflare:sockets$|^argon2$|^node-gyp-build$/,
+      }),
+      new webpack.NormalModuleReplacementPlugin(
+        /^node:crypto$/,
+        require.resolve('./lib/node-crypto-mock.js')
+      )
+    )
 
     return config;
   },

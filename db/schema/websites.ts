@@ -100,3 +100,8 @@ export const websiteCrawlsTableRelations = relations(websiteCrawlsTable, ({ one 
     references: [websitesTable.id],
   }),
 }));
+
+// Backwards compatibility exports
+export const websites = websitesTable;
+export const websitePages = websitePagesTable;
+export const websiteCrawls = websiteCrawlsTable;

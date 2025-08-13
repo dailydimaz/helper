@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import crypto from "@/lib/crypto-polyfill";
 import natural from "natural";
 import { env } from "@/lib/env";
 

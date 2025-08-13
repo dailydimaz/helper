@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
-import * as Sentry from "@sentry/nextjs";
+import crypto from "@/lib/crypto-polyfill";
+// Sentry removed for local development
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    Sentry.captureException(error);
+    console.error('[Sentry Mock] Error:', error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

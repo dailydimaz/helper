@@ -9,6 +9,7 @@ import { SentryContext } from "@/components/sentryContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AppContextProvider } from "@/hooks/use-app";
+import { TRPCReactProvider } from "@/trpc/react";
 
 export const metadata: Metadata = {
   title: "Helper™ Community Edition",
@@ -37,8 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <NuqsAdapter>
       <Toaster richColors />
       <AppContextProvider basePath="">
-        <StandaloneDisplayIntegration />
-        <SentryContext />
+        <TRPCReactProvider>
+          <StandaloneDisplayIntegration />
+          <SentryContext />
         <SidebarProvider>
           <InboxClientLayout>
             <div className="flex h-svh w-full">
@@ -49,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </InboxClientLayout>
         </SidebarProvider>
+        </TRPCReactProvider>
       </AppContextProvider>
     </NuqsAdapter>
   );

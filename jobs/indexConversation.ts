@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm/expressions";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversationMessages } from "@/db/schema/conversationMessages";
 import { NonRetriableError } from "@/jobs/utils";

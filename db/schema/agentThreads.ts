@@ -26,3 +26,6 @@ export const agentThreadsTableRelations = relations(agentThreadsTable, ({ one, m
   }),
   messages: many(agentMessagesTable),
 }));
+
+// Backwards compatibility export
+export const agentThreads = agentThreadsTable;

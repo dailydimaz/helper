@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { uniqBy } from "lodash-es";
 import { useCallback, useEffect, useState } from "react";
 import SuperJSON from "superjson";

@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBaseUrl } from "@/components/constants";
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(`${redirectUrl}/integrations?slackConnectResult=success`);
   } catch (error) {
-    Sentry.captureException(error);
+    console.error('[Sentry Mock] Error:', error);
     return NextResponse.redirect(`${getBaseUrl()}/settings/integrations?slackConnectResult=error`);
   }
 }

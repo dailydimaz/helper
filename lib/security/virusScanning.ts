@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash } from "@/lib/crypto-polyfill";
 
 // Simple virus signature patterns (in production, use ClamAV or similar)
 const VIRUS_SIGNATURES = new Set([

@@ -10,3 +10,6 @@ export const cacheTable = pgTable(
   },
   (table) => [unique("cache_key_idx").on(table.key), index("cache_expires_at_idx").on(table.expiresAt)],
 ).enableRLS();
+
+// Backwards compatibility export
+export const cache = cacheTable;

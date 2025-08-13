@@ -32,3 +32,6 @@ export const platformCustomersTableRelations = relations(platformCustomersTable,
     references: [mailboxesTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const platformCustomers = platformCustomersTable;

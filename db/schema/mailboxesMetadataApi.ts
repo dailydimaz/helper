@@ -28,3 +28,6 @@ export const mailboxesMetadataApiTableRelations = relations(mailboxesMetadataApi
     references: [mailboxesTable.id],
   }),
 }));
+
+// Backwards compatibility export
+export const mailboxesMetadataApi = mailboxesMetadataApiTable;

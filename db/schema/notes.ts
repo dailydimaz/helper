@@ -30,3 +30,6 @@ export const notesTableRelations = relations(notesTable, ({ one, many }) => ({
   }),
   files: many(filesTable),
 }));
+
+// Backwards compatibility export
+export const notes = notesTable;

@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { gmailSupportEmails, mailboxes } from "@/db/schema";
@@ -17,7 +17,7 @@ export const renewMailboxWatches = async () => {
     try {
       await subscribeToMailbox(getGmailService(supportEmail));
     } catch (error) {
-      Sentry.captureException(error);
+      console.error('[Sentry Mock] Error:', error);
     }
   }
 };

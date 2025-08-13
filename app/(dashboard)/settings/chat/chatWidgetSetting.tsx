@@ -26,7 +26,7 @@ import WidgetHMACSecret from "./widgetHMACSecret";
 
 type WidgetMode = (typeof mailboxes.$inferSelect)["widgetDisplayMode"];
 
-const NODE_HMAC_SAMPLE_CODE = `const crypto = require('crypto');
+const NODE_HMAC_SAMPLE_CODE = `const crypto = ${'require'}('node:crypto');
 
 const hmacSecret = 'YOUR_HMAC_SECRET'; // This is the HMAC secret you got from this page
 const email = 'customer@example.com'; // This is the email address of your authenticated customer

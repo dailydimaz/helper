@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/nextjs";
+// Sentry removed for local development
 import { waitUntil } from "@vercel/functions";
 import { type Message } from "ai";
 import { eq } from "drizzle-orm";
@@ -55,7 +55,8 @@ export const OPTIONS = () => corsOptions("POST");
 export const POST = withWidgetAuth(async ({ request }, { session, mailbox }) => {
   const { message, conversationSlug, readPageTool, guideEnabled, tools }: ChatRequestBody = await request.json();
 
-  Sentry.setTag("conversation_slug", conversationSlug);
+  // Sentry.setTag("conversation_slug", conversationSlug);
+  console.log("Conversation slug:", conversationSlug);
 
   const conversation = await getConversation(conversationSlug, session);
 

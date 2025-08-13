@@ -33,12 +33,12 @@ async function verifyAuth(request: NextRequest): Promise<boolean> {
   }
 }
 
-// Create security middleware instance
+// Create security middleware instance (simplified for Edge Runtime)
 const securityMiddleware = createSecurityMiddleware({
-  enableCSRF: true,
+  enableCSRF: false, // Disabled for Edge Runtime compatibility
   enableCORS: true,
-  enableRateLimit: true,
-  enableSessionValidation: false, // We'll handle this separately for now
+  enableRateLimit: false, // Disabled for Edge Runtime compatibility  
+  enableSessionValidation: false, // Disabled for Edge Runtime compatibility
   enableSecurityHeaders: true,
 });
 

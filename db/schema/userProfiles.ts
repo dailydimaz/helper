@@ -34,3 +34,6 @@ export const userProfilesTableRelations = relations(userProfilesTable, ({ one })
 
 export type BasicUserProfile = { id: string; displayName: string | null; email: string | null };
 export type FullUserProfile = typeof userProfilesTable.$inferSelect & { email: string | null };
+
+// Backwards compatibility export
+export const userProfiles = userProfilesTable;

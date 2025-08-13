@@ -38,7 +38,7 @@ fi
 
 pnpm install
 
-pnpm ensure-ssl-certificates
+# pnpm ensure-ssl-certificates  # Commented out for local development
 
 # Check if .env.local exists
 if [ ! -f ".env.local" ]; then

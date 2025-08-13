@@ -99,3 +99,6 @@ export const conversationsTableRelations = relations(conversationsTable, ({ one,
     relationName: "mergedConversations",
   }),
 }));
+
+// Backwards compatibility export
+export const conversations = conversationsTable;

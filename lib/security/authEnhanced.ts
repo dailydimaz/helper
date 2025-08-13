@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { eq, and, gte } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db } from "@/db/edge-client";
 import { usersTable, userSessionsTable } from "@/db/schema";
-import { verifyPassword, signJWT, verifyJWT } from "@/lib/auth";
+import { verifyPassword, signJWT, verifyJWT } from "@/lib/auth-edge";
 import { checkBruteForce } from "./rateLimiting";
 
 // Session security configuration
