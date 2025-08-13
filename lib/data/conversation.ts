@@ -5,7 +5,7 @@ import { cache } from "react";
 import { takeUniqueOrThrow } from "@/components/utils/arrays";
 import { assertDefined } from "@/components/utils/assert";
 import { db, Transaction } from "@/db/client";
-import { conversationMessagesTable, conversationsTable, gmailSupportEmailsTable, mailboxesTable, platformCustomersTable } from "@/db/schema";
+import { conversationMessagesTable, conversationsTable, gmailSupportEmailsTable, mailboxesTable, platformCustomersTable, usersTable } from "@/db/schema";
 import { conversationEventsTable } from "@/db/schema";
 import { triggerEvent } from "@/jobs/trigger";
 import { runAIQuery } from "@/lib/ai";
@@ -14,6 +14,7 @@ import { extractAddresses } from "@/lib/emails";
 import { conversationChannelId, conversationsListChannelId } from "@/lib/realtime/channels";
 import { publishToRealtime } from "@/lib/realtime/publish";
 import { updateVipMessageOnClose } from "@/lib/slack/vipNotifications";
+import { notifyFollowersStatusChange, notifyFollowersAssignmentChange } from "../follower-notifications";
 import { emailKeywordsExtractor } from "../emailKeywordsExtractor";
 import { searchEmailsByKeywords } from "../emailSearchService/searchEmailsByKeywords";
 import { captureExceptionAndLog } from "../shared/sentry";
@@ -125,6 +126,42 @@ export const updateConversation = async (
       byUserId,
       reason: message,
     });
+
+    // Notify followers of changes
+    try {
+      // Get user name for notifications if we have a byUserId
+      let userName: string | undefined;
+      if (byUserId) {
+        const user = await tx.query.usersTable.findFirst({
+          where: eq(usersTable.id, byUserId),
+          columns: { displayName: true, email: true },
+        });
+        userName = user?.displayName || user?.email;
+      }
+
+      if (current.status !== updatedConversation.status) {
+        await notifyFollowersStatusChange(
+          id,
+          current.status || "unknown",
+          updatedConversation.status || "unknown",
+          userName,
+          byUserId || undefined
+        );
+      }
+
+      if (current.assignedToId !== updatedConversation.assignedToId) {
+        await notifyFollowersAssignmentChange(
+          id,
+          current.assignedToId || undefined,
+          updatedConversation.assignedToId || undefined,
+          userName,
+          byUserId || undefined
+        );
+      }
+    } catch (error) {
+      console.error("Error creating follower notifications:", error);
+      // Don't fail the update if notification fails
+    }
   }
   if (!current.assignedToAI && updatedConversation.assignedToAI) {
     const message = await tx.query.conversationMessagesTable.findFirst({

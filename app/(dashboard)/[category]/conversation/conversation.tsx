@@ -47,6 +47,7 @@ import { mutate } from "swr";
 import { api } from "@/trpc/react";
 import ConversationSidebar from "./conversationSidebar";
 import { MessageActions } from "./messageActions";
+import { ConversationFollowButton } from "@/components/ConversationFollowButton";
 
 export type ConversationWithNewMessages = Omit<ConversationType, "messages"> & {
   messages: ((Message | Note | ConversationEvent) & { isNew?: boolean })[];
@@ -266,6 +267,14 @@ const ConversationHeader = ({
       </div>
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0 z-10 lg:w-44 justify-end">
         <CopyLinkButton />
+        {conversationInfo?.slug && (
+          <ConversationFollowButton 
+            conversationSlug={conversationInfo.slug}
+            variant="ghost"
+            size="sm"
+            showCount={true}
+          />
+        )}
         {conversationInfo?.id && <Viewers conversationSlug={conversationInfo.slug} />}
         <Tooltip>
           <TooltipTrigger asChild>

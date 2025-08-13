@@ -8,6 +8,20 @@
       "when": 1755056532427,
       "tag": "0000_exotic_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1755100911815,
+      "tag": "0001_colorful_devos",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755101212200,
+      "tag": "0002_soft_crystal",
+      "breakpoints": true
     }
   ]
 }

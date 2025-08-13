@@ -64,11 +64,17 @@ export const cronJobs = {
     cleanupDanglingFiles,
     closeInactiveConversations,
   },
+  "*/10 * * * *": { 
+    sendPendingFollowerNotifications: () => import("./lightweight/sendFollowerNotifications").then(m => m.sendPendingFollowerNotifications({ batchSize: 20 }))
+  },
   "0 14 * * 1-5": {
     checkAssignedTicketResponseTimes,
     checkVipResponseTimes,
   },
-  "0 0 * * *": { renewMailboxWatches },
+  "0 0 * * *": { 
+    renewMailboxWatches,
+    cleanupOldFollowerNotifications: () => import("./lightweight/sendFollowerNotifications").then(m => m.cleanupOldFollowerNotifications({ olderThanDays: 30 }))
+  },
   "0 0 * * 0": { scheduledWebsiteCrawl },
   "0 16 * * 0,2-6": { generateDailyReports },
   "0 16 * * 1": { generateWeeklyReports },

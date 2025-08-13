@@ -8,6 +8,7 @@ import { handleAutoResponse } from "./handleAutoResponse";
 import { processEmailQueue, cleanupFailedEmails } from "./emailProcessing";
 import { cleanupDanglingFiles as realCleanupDanglingFiles, cleanupOldJobs, performDatabaseMaintenance } from "./systemMaintenance";
 import { sendPendingNotifications, cleanupOldNotifications, sendDigestNotifications } from "./notifications";
+import { sendPendingFollowerNotifications, cleanupOldFollowerNotifications } from "./sendFollowerNotifications";
 
 // Import stubs for remaining jobs
 import {
@@ -77,6 +78,8 @@ export const lightweightJobs = {
   sendPendingNotifications,
   cleanupOldNotifications,
   sendDigestNotifications,
+  sendPendingFollowerNotifications,
+  cleanupOldFollowerNotifications,
 
   // System maintenance jobs
   cleanupDanglingFiles: realCleanupDanglingFiles,

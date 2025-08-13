@@ -23,3 +23,5 @@ export * from "./jobs";
 export * from "./userProfiles";
 export * from "./savedReplies";
 export * from "./issueGroups";
+export * from "./conversationFollowers";
+export * from "./followerNotifications";

@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { conversationsTable, conversationMessagesTable } from "@/db/schema";
 import { publishToRealtime } from "@/lib/realtime/publish";
 import { conversationChannelId } from "@/lib/realtime/channels";
+import { notifyFollowersNewMessage } from "@/lib/follower-notifications";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -74,10 +75,24 @@ async function POST(request: NextRequest, context: RouteContext) {
       })
       .where(eq(conversationsTable.id, conversation.id));
     
+    // Notify followers of new message
+    try {
+      await notifyFollowersNewMessage(
+        conversation.id,
+        content,
+        user.displayName || user.email,
+        user.id
+      );
+    } catch (notificationError) {
+      console.warn("Failed to notify followers:", notificationError);
+      // Don't fail the request if notification fails
+    }
+
     // Publish real-time update (for any legacy components still using real-time)
     try {
-      await publishToRealtime(conversationChannelId(conversation.slug), {
-        type: "message_sent",
+      await publishToRealtime({
+        channel: conversationChannelId(conversation.slug),
+        event: "message_sent",
         data: {
           id: newMessage.id,
           content,
