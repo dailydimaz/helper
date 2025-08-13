@@ -13,7 +13,13 @@ export const OPTIONS = () => corsOptions("POST");
 
 export const POST = withWidgetAuth(async ({ request }, { session, mailbox }) => {
   const parsedParams = createConversationBodySchema.safeParse(await request.json());
-  if (parsedParams.error) return corsResponse({ error: parsedParams.error.message }, { status: 400 });
+  if (!parsedParams.success) {
+    // Security: Don't expose detailed validation errors in production
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Invalid request format'
+      : parsedParams.error.message;
+    return corsResponse({ error: errorMessage }, { status: 400 });
+  }
 
   const isVisitor = session.isAnonymous;
   let status = DEFAULT_INITIAL_STATUS;

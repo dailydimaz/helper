@@ -4,7 +4,11 @@ import { db } from "@/db/client";
 import { usersTable } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-super-secret-jwt-key");
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 export type AuthUser = {
@@ -46,6 +50,7 @@ export async function createUser(email: string, password: string, displayName: s
 
     return {
       ...user,
+      displayName: user.displayName || "",
       access: {
         role: "core",
         keywords: [],
@@ -79,7 +84,7 @@ export async function authenticateUser(email: string, password: string): Promise
     return {
       id: user.id,
       email: user.email,
-      displayName: user.displayName,
+      displayName: user.displayName || "",
       permissions: user.permissions,
       access: {
         role: "core",

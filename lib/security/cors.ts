@@ -60,18 +60,40 @@ const DEFAULT_CORS_CONFIG: CORSConfig = {
 
 // CORS configurations for different endpoint types
 export const CORS_CONFIGS = {
-  // Public API endpoints - more permissive
+  // Public API endpoints - restrictive even for public APIs
   PUBLIC_API: {
     ...DEFAULT_CORS_CONFIG,
     credentials: false,
-    allowedOrigins: ['*'] as string[],
+    allowedOrigins: [
+      env.NEXT_PUBLIC_APP_URL,
+      'https://helperai.dev',
+      'https://*.helperai.dev',
+      // Only allow localhost in development
+      ...(process.env.NODE_ENV === 'development' ? [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://localhost:3000'
+      ] : [])
+    ] as string[],
   },
   
-  // Widget endpoints - very permissive for embedding
+  // Widget endpoints - controlled embedding with domain validation
   WIDGET: {
     ...DEFAULT_CORS_CONFIG,
     credentials: false,
-    allowedOrigins: ['*'] as string[],
+    allowedOrigins: [
+      env.NEXT_PUBLIC_APP_URL,
+      'https://helperai.dev',
+      'https://*.helperai.dev',
+      // Development domains
+      ...(process.env.NODE_ENV === 'development' ? [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://localhost:3000'
+      ] : []),
+      // Add verified customer domains here as needed
+      // 'https://trusted-customer-domain.com',
+    ] as string[],
     allowedHeaders: [
       ...DEFAULT_CORS_CONFIG.allowedHeaders,
       'X-Widget-Host',
@@ -114,27 +136,61 @@ export const CORS_CONFIGS = {
 };
 
 /**
- * Check if origin is allowed
+ * Check if origin is allowed with enhanced security validation
  */
 export function isOriginAllowed(origin: string | null, allowedOrigins: string[]): boolean {
-  if (!origin) return true; // Allow requests without origin (mobile apps, etc.)
+  // Security: Be more strict about missing origins
+  if (!origin) {
+    // Only allow missing origin for specific cases (mobile apps, direct API calls)
+    // For web browsers, origin should always be present
+    return false;
+  }
   
-  // Handle wildcard
-  if (allowedOrigins.includes('*')) return true;
+  // Security: Never allow wildcard in production
+  if (allowedOrigins.includes('*')) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('SECURITY WARNING: Wildcard CORS origin detected in production!');
+      return false;
+    }
+    return true;
+  }
+  
+  // Validate origin format
+  try {
+    new URL(origin);
+  } catch {
+    console.warn(`SECURITY WARNING: Invalid origin format: ${origin}`);
+    return false;
+  }
   
   // Check exact matches
   if (allowedOrigins.includes(origin)) return true;
   
-  // Check wildcard subdomains
+  // Check wildcard subdomains with enhanced validation
   for (const allowed of allowedOrigins) {
     if (allowed.startsWith('*.')) {
       const domain = allowed.slice(2);
-      if (origin.endsWith(`.${domain}`) || origin === domain) {
-        return true;
+      
+      // Enhanced subdomain validation
+      if (origin.endsWith(`.${domain}`) || origin === `https://${domain}` || origin === `http://${domain}`) {
+        // Additional security: validate that it's a legitimate subdomain
+        try {
+          const originUrl = new URL(origin);
+          
+          // Ensure protocol matches expectations
+          if (process.env.NODE_ENV === 'production' && originUrl.protocol !== 'https:') {
+            return false;
+          }
+          
+          return true;
+        } catch {
+          return false;
+        }
       }
     }
   }
   
+  console.warn(`SECURITY WARNING: Origin not in allowlist: ${origin}`);
   return false;
 }
 
@@ -335,7 +391,7 @@ export function createCORSResponse(
 }
 
 /**
- * Security validation for CORS
+ * Enhanced security validation for CORS
  */
 export function validateCORSSecurity(request: NextRequest): {
   valid: boolean;
@@ -344,45 +400,78 @@ export function validateCORSSecurity(request: NextRequest): {
   const origin = request.headers.get('origin');
   const host = request.headers.get('host');
   const userAgent = request.headers.get('user-agent');
+  const referer = request.headers.get('referer');
   
-  // Check for suspicious patterns
-  if (origin && origin.includes('localhost') && process.env.NODE_ENV === 'production') {
-    return {
-      valid: false,
-      error: 'Localhost origin not allowed in production',
-    };
+  // Enhanced origin validation for production
+  if (origin && process.env.NODE_ENV === 'production') {
+    // Block localhost/private IPs in production
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
+      return {
+        valid: false,
+        error: 'Local/private origins not allowed in production',
+      };
+    }
+    
+    // Ensure HTTPS in production
+    if (!origin.startsWith('https://')) {
+      return {
+        valid: false,
+        error: 'HTTPS required in production',
+      };
+    }
   }
   
   // Check for missing host header (potential security issue)
   if (!host) {
     return {
       valid: false,
-      error: 'Missing host header',
+      error: 'Missing host header - potential security issue',
     };
   }
   
-  // Check for suspicious user agents (basic bot detection)
+  // Enhanced suspicious request detection
   if (userAgent) {
     const suspiciousPatterns = [
       /curl/i,
       /wget/i,
-      /python/i,
+      /python-requests/i,
+      /httpx/i,
+      /axios/i, // Block direct axios calls
+      /node-fetch/i,
       /bot/i,
       /crawler/i,
       /spider/i,
+      /scanner/i,
+      /exploit/i,
     ];
     
-    // Only block for sensitive endpoints
-    const sensitivePaths = ['/api/auth', '/api/adm'];
+    // Block suspicious requests for sensitive endpoints
+    const sensitivePaths = ['/api/auth', '/api/adm', '/api/files'];
     const isSensitive = sensitivePaths.some(path => 
       request.nextUrl.pathname.startsWith(path)
     );
     
     if (isSensitive && suspiciousPatterns.some(pattern => pattern.test(userAgent))) {
+      console.warn(`SECURITY WARNING: Blocked suspicious request from ${origin || 'unknown'} with UA: ${userAgent}`);
       return {
         valid: false,
         error: 'Automated requests not allowed for this endpoint',
       };
+    }
+  }
+  
+  // Cross-check origin and referer for consistency
+  if (origin && referer) {
+    try {
+      const originUrl = new URL(origin);
+      const refererUrl = new URL(referer);
+      
+      if (originUrl.hostname !== refererUrl.hostname) {
+        console.warn(`SECURITY WARNING: Origin/Referer mismatch: ${origin} vs ${referer}`);
+        // Don't block, but log for monitoring
+      }
+    } catch {
+      // Invalid URLs - continue with other checks
     }
   }
   

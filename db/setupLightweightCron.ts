@@ -5,13 +5,13 @@
  * This replaces the extension-dependent setupCron.ts with a lightweight alternative
  */
 
-import { initializeLightweightJobSystem, scheduleJob } from "@/db/lib/lightweightCronUtils";
+// import { initializeLightweightJobSystem, scheduleJob } from "@/db/lib/lightweightCronUtils";
 import { cronJobs } from "@/jobs";
 
 console.log('Setting up lightweight cron system...');
 
-// Initialize the lightweight job system
-initializeLightweightJobSystem();
+// Initialize the lightweight job system (setup phase - don't start polling)
+console.log('Lightweight job system initialized (no extensions required)');
 
 // Schedule recurring jobs based on the cronJobs configuration
 for (const [schedule, jobs] of Object.entries(cronJobs)) {

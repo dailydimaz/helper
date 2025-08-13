@@ -31,7 +31,11 @@ export const GET = withWidgetAuth(async ({ request }, { session, mailbox }) => {
   });
 
   if (!parsedParams.success) {
-    return Response.json({ error: "Invalid search parameters", details: parsedParams.error.issues }, { status: 400 });
+    // Security: Don't expose detailed validation errors in production
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? 'Invalid search parameters'
+      : `Invalid search parameters: ${parsedParams.error.issues.map((i: any) => i.message).join(', ')}`;
+    return Response.json({ error: errorMessage }, { status: 400 });
   }
 
   const { list } = await searchConversations(mailbox, { ...parsedParams.data, ...customerFilter });

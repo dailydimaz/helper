@@ -16,7 +16,7 @@ let nextConfig: NextConfig = {
   allowedDevOrigins: ["https://helperai.dev", "https://localhost:3000"],
   // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-8875108
   transpilePackages: ["next-auth"],
-  serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm", "node:crypto", "node-gyp-build"],
+  serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm", "node:crypto", "node-gyp-build", "@slack/web-api"],
 
   // Performance optimizations
   compress: true,
@@ -26,7 +26,6 @@ let nextConfig: NextConfig = {
   },
 
   // Bundle optimization
-  swcMinify: true,
   modularizeImports: {
     '@/components/ui': {
       transform: '@/components/ui/{{member}}',
@@ -43,7 +42,6 @@ let nextConfig: NextConfig = {
     webpackBuildWorker: true,
     parallelServerCompiles: true,
     parallelServerBuildTraces: true,
-    serverComponentsExternalPackages: ['node:crypto'],
   },
   outputFileTracingIncludes: {
     "/widget/sdk.js": ["./public/**/*"],

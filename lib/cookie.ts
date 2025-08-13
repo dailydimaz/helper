@@ -2,14 +2,19 @@ import { jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { AuthUser } from './auth/authService';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-super-secret-jwt-key');
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv);
 const COOKIE_NAME = 'auth-token';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: 'strict' as const, // Enhanced security: prevents CSRF attacks
   path: '/',
   maxAge: 60 * 60 * 24 * 7, // 7 days
+  priority: 'high' as const, // Give auth cookie priority
 };
 
 export async function getLogin(): Promise<AuthUser | null> {

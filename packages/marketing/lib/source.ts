@@ -1,5 +1,5 @@
 import { loader } from "fumadocs-core/source";
-import { attachFile, createOpenAPI } from "fumadocs-openapi/server";
+import { createOpenAPI } from "fumadocs-openapi/server";
 import { icons } from "lucide-react";
 import { createElement } from "react";
 import { docs } from "@/.source";
@@ -8,7 +8,7 @@ export const source = loader({
   baseUrl: "/docs",
   source: docs.toFumadocsSource(),
   pageTree: {
-    attachFile,
+    // attachFile: attachFile as any, // Temporarily disabled due to runtime error
   },
   icon(icon) {
     if (!icon) {

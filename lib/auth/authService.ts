@@ -1,11 +1,14 @@
 import * as argon2 from "argon2";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
 import { db } from "@/db/client";
 import { usersTable } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-super-secret-jwt-key");
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 export type AuthUser = {
@@ -84,7 +87,7 @@ export async function authenticateUser(email: string, password: string): Promise
       email: user.email,
       displayName: user.displayName || "",
       permissions: user.permissions,
-      access: user.access,
+      access: user.access || { role: "afk", keywords: [] },
     };
   } catch {
     return null;
@@ -107,12 +110,16 @@ export async function createUser(email: string, password: string, displayName?: 
       })
       .returning();
 
+    if (!newUser) {
+      return null;
+    }
+
     return {
       id: newUser.id,
       email: newUser.email,
       displayName: newUser.displayName || "",
       permissions: newUser.permissions,
-      access: newUser.access,
+      access: newUser.access || { role: "afk", keywords: [] },
     };
   } catch {
     return null;

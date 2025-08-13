@@ -160,6 +160,59 @@ export function apiValidationError(errors: Record<string, string>): NextResponse
   );
 }
 
+/**
+ * Safely handle Zod SafeParse results without exposing internal details
+ */
+export function handleSafeParseError<T>(
+  result: { success: false; error: any } | { success: true; data: T }
+): NextResponse<ApiResponse> | null {
+  if (result.success) {
+    return null; // No error
+  }
+  
+  // Security: Don't expose detailed Zod error information in production
+  if (process.env.NODE_ENV === 'production') {
+    return apiError("Invalid request format", 400);
+  }
+  
+  // In development, provide detailed validation errors for debugging
+  if (result.error?.issues) {
+    const errors: Record<string, string> = {};
+    result.error.issues.forEach((issue: any) => {
+      const path = issue.path.join(".") || "root";
+      errors[path] = issue.message;
+    });
+    return apiValidationError(errors);
+  }
+  
+  return apiError("Invalid request format", 400);
+}
+
+/**
+ * Enhanced security wrapper for API error responses
+ * Prevents information disclosure in production while preserving debug info in development
+ */
+export function secureApiError(error: unknown, defaultMessage: string = "An error occurred", statusCode: number = 500): NextResponse<ApiResponse> {
+  // Always log the full error for server-side debugging
+  console.error('API Error:', error);
+  
+  // In production, return sanitized error messages
+  if (process.env.NODE_ENV === 'production') {
+    return apiError(defaultMessage, statusCode);
+  }
+  
+  // In development, show detailed error information
+  if (error instanceof Error) {
+    return apiError(error.message, statusCode);
+  }
+  
+  if (typeof error === 'string') {
+    return apiError(error, statusCode);
+  }
+  
+  return apiError(defaultMessage, statusCode);
+}
+
 // Validation utilities
 export async function validateRequest<T>(
   request: NextRequest,
@@ -243,7 +296,7 @@ export function parsePagination(request: NextRequest): { page: number; perPage: 
   return { page, perPage, offset };
 }
 
-// Error handling utilities
+// Error handling utilities with enhanced security
 export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   console.error("API Error:", error);
   
@@ -254,6 +307,15 @@ export function handleApiError(error: unknown): NextResponse<ApiResponse> {
     if (error.message === "Insufficient permissions") {
       return apiError("Insufficient permissions", 403);
     }
+    
+    // For security: Don't expose internal error messages in production
+    if (process.env.NODE_ENV === 'production') {
+      // Log the actual error but return sanitized message
+      console.error('Production API Error (sanitized for response):', error.message);
+      return apiError("An error occurred while processing your request", 500);
+    }
+    
+    // In development, show actual error for debugging
     return apiError(error.message, 500);
   }
   
@@ -376,7 +438,11 @@ export function createMethodHandler(handlers: {
           monitor.recordSlowQuery(`API ${method} ${url} (ERROR)`, duration);
           
           if (error instanceof Error) {
-            return apiError(error.message, 500, undefined, { duration });
+            // Security: Don't expose internal error messages in production
+            const errorMessage = process.env.NODE_ENV === 'production' 
+              ? 'An error occurred while processing your request'
+              : error.message;
+            return apiError(errorMessage, 500, undefined, { duration });
           }
           
           return apiError('Internal server error', 500, undefined, { duration });

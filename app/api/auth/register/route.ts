@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createUser, createSession, setAuthCookie } from "@/lib/auth";
-import { apiError, apiSuccess, createMethodHandler, validateRequest } from "@/lib/api";
+import { apiError, validateRequest } from "@/lib/api";
 import { db } from "@/db/client";
 import { usersTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { rateLimit } from "@/lib/security/rateLimiting";
+import { validateCSRFWithOrigin, initializeCSRF } from "@/lib/security/csrf";
+import { applyCORSHeaders, CORS_CONFIGS } from "@/lib/security/cors";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -13,6 +16,28 @@ const registerSchema = z.object({
 });
 
 async function POST(request: NextRequest) {
+  // Check rate limiting for registration attempts
+  const rateLimitResult = rateLimit(request, 'REGISTER');
+  if (!rateLimitResult.allowed) {
+    return apiError(
+      rateLimitResult.blocked 
+        ? "Too many registration attempts. Please try again later." 
+        : "Registration rate limit exceeded.", 
+      429, 
+      undefined, 
+      {
+        retryAfter: rateLimitResult.retryAfter,
+        resetTime: rateLimitResult.resetTime,
+      }
+    );
+  }
+
+  // Validate CSRF and origin
+  const csrfValidation = await validateCSRFWithOrigin(request);
+  if (!csrfValidation.valid) {
+    return apiError(csrfValidation.error || "CSRF validation failed", 403);
+  }
+
   const validation = await validateRequest(request, registerSchema);
   
   if ("error" in validation) {
@@ -34,21 +59,31 @@ async function POST(request: NextRequest) {
     }
 
     const user = await createUser(email, password, displayName);
+    if (!user) {
+      return apiError("Failed to create user", 500);
+    }
+    
     const token = await createSession(user.id, request);
     const response = setAuthCookie(token);
+    
+    // Initialize CSRF protection
+    await initializeCSRF(request, response, token, user.id);
     
     // Return user data without sensitive information
     const { password: _, ...userData } = user;
     
+    // Apply CORS headers
+    const corsResponse = applyCORSHeaders(request, response, CORS_CONFIGS.AUTH);
+    
     // Modify the response to include user data and success message
-    const responseBody = await response.json();
+    const responseBody = await corsResponse.json();
     return new Response(JSON.stringify({
       ...responseBody,
       data: userData,
       message: "Registration successful"
     }), {
       status: 200,
-      headers: response.headers,
+      headers: corsResponse.headers,
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -56,4 +91,4 @@ async function POST(request: NextRequest) {
   }
 }
 
-export const { POST: handler } = createMethodHandler({ POST });
+export { POST };

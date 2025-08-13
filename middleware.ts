@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { createSecurityMiddleware, applySecurityHeaders, logSecurityEvent } from "@/lib/security/middleware";
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-super-secret-jwt-key');
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv);
 const COOKIE_NAME = 'auth-token';
 
 // Protected routes that require authentication

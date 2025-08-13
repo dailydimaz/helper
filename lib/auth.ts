@@ -120,9 +120,10 @@ export function setAuthCookie(token: string): NextResponse {
   response.cookies.set(JWT_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict", // Enhanced security: prevents CSRF attacks
     maxAge: 7 * 24 * 60 * 60, // 7 days
     path: "/",
+    priority: "high" as const, // Give auth cookie priority
   });
   return response;
 }

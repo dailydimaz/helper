@@ -17,10 +17,10 @@ describe("helper-auth", () => {
   });
 
   describe("generateHelperAuth", () => {
-    it("generates valid HMAC auth parameters using environment variables", () => {
+    it("generates valid HMAC auth parameters using environment variables", async () => {
       process.env.HELPER_HMAC_SECRET = "test-secret";
       const email = "test@example.com";
-      const result = generateHelperAuth({ email });
+      const result = await generateHelperAuth({ email });
       expect(result).toEqual({
         email,
         timestamp: mockTimestamp,
@@ -29,10 +29,10 @@ describe("helper-auth", () => {
       expect(result.emailHash).toHaveLength(64);
     });
 
-    it("uses provided parameters over environment variables", () => {
+    it("uses provided parameters over environment variables", async () => {
       process.env.HELPER_HMAC_SECRET = "env-secret";
       const email = "test@example.com";
-      const result = generateHelperAuth({
+      const result = await generateHelperAuth({
         email,
         hmacSecret: "param-secret",
       });
@@ -44,9 +44,9 @@ describe("helper-auth", () => {
       expect(result.emailHash).toHaveLength(64);
     });
 
-    it("throws error if HMAC secret is not provided", () => {
+    it("throws error if HMAC secret is not provided", async () => {
       process.env.HELPER_HMAC_SECRET = undefined;
-      expect(() => generateHelperAuth({ email: "test@example.com" })).toThrow(
+      await expect(generateHelperAuth({ email: "test@example.com" })).rejects.toThrow(
         "HMAC secret must be provided via parameter or HELPER_HMAC_SECRET environment variable",
       );
     });

@@ -6,7 +6,11 @@ import { usersTable, userSessionsTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'test-secret-key');
+const jwtSecretEnv = process.env.JWT_SECRET;
+if (!jwtSecretEnv) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretEnv);
 
 async function cleanupTestUser(email: string) {
   try {
@@ -36,7 +40,7 @@ describe('JWT Token Generation and Validation Tests', () => {
       isActive: true,
       access: { role: 'afk' as const, keywords: [] },
     }).returning();
-    testUserId = user.id;
+    testUserId = user?.id || '';
   });
 
   afterEach(async () => {
@@ -205,9 +209,9 @@ describe('JWT Token Generation and Validation Tests', () => {
         .where(eq(userSessionsTable.token, token));
       
       expect(sessions.length).toBe(1);
-      expect(sessions[0].userId).toBe(testUserId);
-      expect(sessions[0].userAgent).toBe('test-user-agent');
-      expect(sessions[0].ipAddress).toBe('127.0.0.1');
+      expect(sessions[0]?.userId).toBe(testUserId);
+      expect(sessions[0]?.userAgent).toBe('test-user-agent');
+      expect(sessions[0]?.ipAddress).toBe('127.0.0.1');
     });
 
     it('should create session without request metadata', async () => {
@@ -220,9 +224,9 @@ describe('JWT Token Generation and Validation Tests', () => {
         .where(eq(userSessionsTable.token, token));
       
       expect(sessions.length).toBe(1);
-      expect(sessions[0].userId).toBe(testUserId);
-      expect(sessions[0].userAgent).toBeNull();
-      expect(sessions[0].ipAddress).toBeNull();
+      expect(sessions[0]?.userId).toBe(testUserId);
+      expect(sessions[0]?.userAgent).toBeNull();
+      expect(sessions[0]?.ipAddress).toBeNull();
     });
 
     it('should set appropriate session expiration', async () => {
@@ -236,9 +240,9 @@ describe('JWT Token Generation and Validation Tests', () => {
       const now = new Date();
       const sevenDaysFromNow = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
       
-      expect(session.expiresAt).toBeInstanceOf(Date);
-      expect(session.expiresAt.getTime()).toBeGreaterThan(now.getTime());
-      expect(session.expiresAt.getTime()).toBeLessThanOrEqual(sevenDaysFromNow.getTime() + 1000); // 1s tolerance
+      expect(session?.expiresAt).toBeInstanceOf(Date);
+      expect(session?.expiresAt.getTime()).toBeGreaterThan(now.getTime());
+      expect(session?.expiresAt.getTime()).toBeLessThanOrEqual(sevenDaysFromNow.getTime() + 1000); // 1s tolerance
     });
 
     it('should handle multiple sessions for same user', async () => {
@@ -317,7 +321,7 @@ describe('JWT Token Generation and Validation Tests', () => {
       
       // Decode header to check algorithm
       const [headerBase64] = token.split('.');
-      const header = JSON.parse(Buffer.from(headerBase64, 'base64url').toString());
+      const header = JSON.parse(Buffer.from(headerBase64 || '', 'base64url').toString());
       
       expect(header.alg).toBe('HS256');
       expect(header.typ).toBe('JWT');
