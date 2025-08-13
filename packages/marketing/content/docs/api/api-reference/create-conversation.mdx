@@ -2,19 +2,60 @@
 title: Create Conversation
 description: Creates a new conversation in Helper
 full: true
-_openapi:
-  method: POST
-  route: /api/chat/conversation
-  toc: []
-  structuredData:
-    headings: []
-    contents:
-      - content: Creates a new conversation in Helper
 ---
 
-<APIPage
-  document={"./public/openapi.json"}
-  operations={[{ path: "/api/chat/conversation", method: "post" }]}
-  webhooks={[]}
-  hasHead={false}
-/>
+# Create Conversation API
+
+Creates a new conversation and returns a conversation slug that can be used in subsequent API calls.
+
+## Endpoint
+
+```
+POST /api/chat/conversation
+```
+
+## Authentication
+
+Requires a Bearer token in the Authorization header:
+
+```
+Authorization: Bearer <session-token>
+```
+
+## Request Body
+
+| Parameter  | Type    | Required | Description                                                                                                                                                   |
+| ---------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isPrompt` | boolean | No       | Set to true if the conversation is starting from a fixed prompt rather than a message typed by the customer, e.g. a link with a data-helper-prompt attribute. |
+| `subject`  | string  | No       | Optional subject for the conversation                                                                                                                         |
+
+### Example Request
+
+```json
+{
+  "isPrompt": true,
+  "subject": "Getting started with Helper AI"
+}
+```
+
+## Response
+
+### Success (200 OK)
+
+| Field              | Type   | Description                                     |
+| ------------------ | ------ | ----------------------------------------------- |
+| `conversationSlug` | string | Unique identifier for the created conversation. |
+
+```json
+{
+  "conversationSlug": "abc123def456"
+}
+```
+
+### Error Responses
+
+| Status Code | Description                                         |
+| ----------- | --------------------------------------------------- |
+| 400         | Invalid request format                              |
+| 401         | Authentication required - Invalid session token    |
+| 404         | Mailbox not found                                   |

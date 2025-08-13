@@ -20,4 +20,5 @@ export const source = loader({
   },
 });
 
+// Create OpenAPI instance with schema path
 export const openapi = createOpenAPI();

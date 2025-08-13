@@ -2,19 +2,75 @@
 title: Send Message
 description: Sends a message to Helper and receives a streaming response
 full: true
-_openapi:
-  method: POST
-  route: /api/chat
-  toc: []
-  structuredData:
-    headings: []
-    contents:
-      - content: Sends a message to Helper and receives a streaming response
 ---
 
-<APIPage
-  document={"./public/openapi.json"}
-  operations={[{ path: "/api/chat", method: "post" }]}
-  webhooks={[]}
-  hasHead={false}
-/>
+# Send Message API
+
+Sends a message within an existing conversation and receives a streaming response from Helper AI.
+
+## Endpoint
+
+```
+POST /api/chat/conversation/{slug}/message
+```
+
+## Authentication
+
+Requires a Bearer token in the Authorization header:
+
+```
+Authorization: Bearer <session-token>
+```
+
+## Path Parameters
+
+| Parameter | Type   | Required | Description                                           |
+| --------- | ------ | -------- | ----------------------------------------------------- |
+| `slug`    | string | Yes      | The conversation slug returned from creating a conversation |
+
+## Request Body
+
+| Parameter     | Type     | Required | Description                                    |
+| ------------- | -------- | -------- | ---------------------------------------------- |
+| `content`     | string   | Yes      | The message content to send                    |
+| `attachments` | array    | No       | Optional file attachments                      |
+| `tools`       | object   | No       | Optional tools to make available to the AI     |
+
+### Attachments Format
+
+Each attachment should have:
+
+| Field         | Type   | Required | Description                  |
+| ------------- | ------ | -------- | ---------------------------- |
+| `name`        | string | Yes      | Name of the attachment       |
+| `url`         | string | Yes      | URL of the uploaded attachment |
+| `contentType` | string | Yes      | MIME type of the attachment  |
+
+### Example Request
+
+```json
+{
+  "content": "Hello, I need help with my account",
+  "attachments": [
+    {
+      "name": "screenshot.png",
+      "url": "https://example.com/screenshot.png",
+      "contentType": "image/png"
+    }
+  ]
+}
+```
+
+## Response
+
+### Success (200 OK)
+
+The API returns a streaming response with Helper AI's reply.
+
+### Error Responses
+
+| Status Code | Description                                         |
+| ----------- | --------------------------------------------------- |
+| 400         | Invalid request or missing content                  |
+| 401         | Authentication required - Invalid session          |
+| 404         | Conversation not found                              |

@@ -1,0 +1,356 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Helper AI API",
+    "description": "API for managing conversations and messages in Helper AI",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Helper AI Support",
+      "url": "https://helperai.dev"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://helperai.dev",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Session token obtained from the Session API"
+      }
+    },
+    "schemas": {
+      "CreateConversationRequest": {
+        "type": "object",
+        "properties": {
+          "isPrompt": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Set to true if the conversation is starting from a fixed prompt rather than a message typed by the customer"
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional subject for the conversation"
+          }
+        }
+      },
+      "CreateConversationResponse": {
+        "type": "object",
+        "required": ["conversationSlug"],
+        "properties": {
+          "conversationSlug": {
+            "type": "string",
+            "description": "Unique identifier for the created conversation",
+            "example": "abc123def456"
+          }
+        }
+      },
+      "CreateMessageRequest": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The message content to send"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "url", "contentType"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the attachment"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "URL of the uploaded attachment"
+                },
+                "contentType": {
+                  "type": "string",
+                  "description": "MIME type of the attachment"
+                }
+              }
+            },
+            "description": "Optional file attachments"
+          },
+          "tools": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "object"
+                },
+                "serverRequestUrl": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Optional tools to make available to the AI"
+          }
+        }
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "properties": {
+          "isAnonymous": {
+            "type": "boolean",
+            "description": "Whether this is an anonymous session"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User email for authenticated sessions"
+          }
+        }
+      },
+      "CreateSessionResponse": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "JWT session token for API authentication"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/chat/conversation": {
+      "post": {
+        "summary": "Create a new conversation",
+        "description": "Creates a new conversation and returns a conversation slug that can be used in subsequent API calls.",
+        "operationId": "createConversation",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConversationRequest"
+              },
+              "example": {
+                "isPrompt": true,
+                "subject": "Getting started with Helper AI"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConversationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required - Invalid session token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Mailbox not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Conversations"]
+      }
+    },
+    "/api/chat/conversation/{slug}/message": {
+      "post": {
+        "summary": "Send a message in a conversation",
+        "description": "Send a message within an existing conversation",
+        "operationId": "sendMessage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The conversation slug returned from creating a conversation"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageRequest"
+              },
+              "example": {
+                "content": "Hello, I need help with my account",
+                "attachments": [
+                  {
+                    "name": "screenshot.png",
+                    "url": "https://example.com/screenshot.png",
+                    "contentType": "image/png"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent successfully"
+          },
+          "400": {
+            "description": "Invalid request or missing content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required - Invalid session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Conversation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Messages"]
+      }
+    },
+    "/api/widget/session": {
+      "post": {
+        "summary": "Create a widget session",
+        "description": "Create a session token for widget authentication",
+        "operationId": "createSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              },
+              "example": {
+                "isAnonymous": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Conversations",
+      "description": "Operations for managing conversations"
+    },
+    {
+      "name": "Messages", 
+      "description": "Operations for sending and managing messages"
+    },
+    {
+      "name": "Authentication",
+      "description": "Session management and authentication"
+    }
+  ]
+}

@@ -43,19 +43,19 @@ export const GET = withWidgetAuth(async ({ request }, { session, mailbox }) => {
   const messageCounts = await db
     .select({
       count: count(),
-      conversationId: conversationMessages.conversationId,
+      conversationId: conversationMessagesTable.conversationId,
     })
-    .from(conversationMessages)
+    .from(conversationMessagesTable)
     .where(
       and(
         inArray(
-          conversationMessages.conversationId,
+          conversationMessagesTable.conversationId,
           results.map((r) => r.id),
         ),
-        inArray(conversationMessages.role, ["user", "staff", "ai_assistant"]),
+        inArray(conversationMessagesTable.role, ["user", "staff", "ai_assistant"]),
       ),
     )
-    .groupBy(conversationMessages.conversationId);
+    .groupBy(conversationMessagesTable.conversationId);
 
   const conversations = results
     .map((conv) => ({

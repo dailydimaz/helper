@@ -2,19 +2,67 @@
 title: Create Session
 description: Creates a new authentication session for Helper
 full: true
-_openapi:
-  method: POST
-  route: /api/widget/session
-  toc: []
-  structuredData:
-    headings: []
-    contents:
-      - content: Creates a new authentication session for Helper
 ---
 
-<APIPage
-  document={"./public/openapi.json"}
-  operations={[{ path: "/api/widget/session", method: "post" }]}
-  webhooks={[]}
-  hasHead={false}
-/>
+# Create Session API
+
+Creates a new authentication session for Helper AI and returns a token for API access.
+
+## Endpoint
+
+```
+POST /api/widget/session
+```
+
+## Request Body
+
+| Parameter     | Type    | Required | Description                           |
+| ------------- | ------- | -------- | ------------------------------------- |
+| `isAnonymous` | boolean | No       | Whether this is an anonymous session  |
+| `email`       | string  | No       | User email for authenticated sessions |
+
+### Example Request
+
+```json
+{
+  "isAnonymous": true
+}
+```
+
+Or for authenticated sessions:
+
+```json
+{
+  "isAnonymous": false,
+  "email": "user@example.com"
+}
+```
+
+## Response
+
+### Success (200 OK)
+
+| Field   | Type   | Description                               |
+| ------- | ------ | ----------------------------------------- |
+| `token` | string | JWT session token for API authentication |
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Error Responses
+
+| Status Code | Description                     |
+| ----------- | ------------------------------- |
+| 400         | Invalid request parameters      |
+| 401         | Authentication failed           |
+
+## Usage
+
+Use the returned token in the Authorization header for subsequent API calls:
+
+```
+Authorization: Bearer <token>
+```
