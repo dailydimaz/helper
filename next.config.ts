@@ -1,6 +1,5 @@
-import { withSentryConfig } from "@sentry/nextjs";
-import type { NextConfig } from "next";
 import { env } from "@/lib/env";
+import type { NextConfig } from "next";
 
 // Ensures that `env` is not an unused variable. Importing `env` during build-time
 // ensures that the project never gets deployed unless all environment variables
@@ -18,14 +17,14 @@ let nextConfig: NextConfig = {
   // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-8875108
   transpilePackages: ["next-auth"],
   serverExternalPackages: ["natural", "picocolors", "redis", "@redis/client", "@readme/openapi-parser", "dotenv", "argon2", "sharp", "googleapis", "nodemailer", "mailparser", "pg", "drizzle-orm"],
-  
+
   // Performance optimizations
   compress: true,
   generateEtags: true,
   httpAgentOptions: {
     keepAlive: true,
   },
-  
+
   // Bundle optimization
   swcMinify: true,
   modularizeImports: {
@@ -37,7 +36,7 @@ let nextConfig: NextConfig = {
       skipDefaultConversion: true,
     },
   },
-  
+
   // Experimental features for performance
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
@@ -97,7 +96,7 @@ let nextConfig: NextConfig = {
       },
     ],
   },
-  webpack(config) {
+  webpack(config, { webpack }) {
     // @ts-expect-error - no types
     const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.(".svg"));
     config.module.rules.push(
@@ -148,18 +147,9 @@ let nextConfig: NextConfig = {
       "constants": false,
     };
 
-    // See https://github.com/getsentry/sentry-javascript/issues/12077#issuecomment-2180307072
-    config.ignoreWarnings = [
-      ...(config.ignoreWarnings ?? []),
-      (warning: any, { requestShortener }: any) => {
-        const isOtelModule =
-          !!warning.module &&
-          (/@opentelemetry\/instrumentation/.test(warning.module.readableIdentifier(requestShortener)) ||
-            /@prisma\/instrumentation/.test(warning.module.readableIdentifier(requestShortener)));
-        const isCriticalDependencyMessage = /Critical dependency/.test(warning.message);
-        return isOtelModule && isCriticalDependencyMessage;
-      },
-    ];
+    config.plugins.push(new webpack.IgnorePlugin({
+      resourceRegExp: /^pg-native$|^cloudflare:sockets$/,
+    }))
 
     return config;
   },
@@ -204,45 +194,4 @@ let nextConfig: NextConfig = {
   },
 };
 
-export default process.env.VERCEL_ENV === "production"
-  ? withSentryConfig(nextConfig, {
-      // For all available options, see:
-      // https://github.com/getsentry/sentry-webpack-plugin#options
-
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-
-      // Only print logs for uploading source maps in CI
-      silent: !process.env.CI,
-
-      // For all available options, see:
-      // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-      // Upload a larger set of source maps for prettier stack traces (increases build time)
-      widenClientFileUpload: true,
-
-      // Automatically annotate React components to show their full name in breadcrumbs and session replay
-      reactComponentAnnotation: {
-        enabled: true,
-      },
-
-      // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-      // This can increase your server load as well as your hosting bill.
-      // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-      // side errors will fail.
-      tunnelRoute: "/monitoring",
-
-      // Automatically tree-shake Sentry logger statements to reduce bundle size
-      disableLogger: true,
-
-      // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-      // See the following for more information:
-      // https://docs.sentry.io/product/crons/
-      // https://vercel.com/docs/cron-jobs
-      automaticVercelMonitors: true,
-
-      // Avoid cluttering traces with a ton of middleware spans.
-      autoInstrumentMiddleware: false,
-    })
-  : nextConfig;
+export default nextConfig

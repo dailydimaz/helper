@@ -1,8 +1,8 @@
-import { isNull, relations, sql } from "drizzle-orm";
-import { bigint, boolean, index, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { encryptedField } from "@/db/lib/encryptedField";
 import { PromptInfo } from "@/lib/ai/promptInfo";
 import { CustomerInfo } from "@/types/customerInfo";
+import { isNull, relations, sql } from "drizzle-orm";
+import { bigint, boolean, index, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { withTimestamps } from "../lib/with-timestamps";
 import { conversationsTable } from "./conversations";
 import { filesTable } from "./files";
@@ -81,13 +81,13 @@ export const conversationMessagesTable = pgTable(
     index("conversations_email_response_to_id_af0048dc").on(table.responseToId.asc().nullsLast()),
     index("conversations_email_clerk_user_id").on(table.userId.asc().nullsLast()),
     index("search_index_idx").using("gin", sql`string_to_array(${table.searchIndex}, ' ') array_ops`),
-    index("messages_reason_idx").using("btree", table.reason).concurrently(),
-    index("messages_slack_message_ts_idx").using("btree", table.slackMessageTs).concurrently(),
+    index("messages_reason_idx").using("btree", table.reason),
+    index("messages_slack_message_ts_idx").using("btree", table.slackMessageTs),
     index("messages_reaction_count_idx")
       .on(table.reactionType, table.reactionCreatedAt)
       .where(isNull(table.deletedAt))
-      .concurrently(),
-    index("messages_role_created_at_idx").on(table.role, table.createdAt).concurrently(),
+    ,
+    index("messages_role_created_at_idx").on(table.role, table.createdAt),
   ],
 ).enableRLS();
 
