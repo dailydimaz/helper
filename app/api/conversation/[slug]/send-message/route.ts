@@ -52,7 +52,7 @@ async function POST(request: NextRequest, context: RouteContext) {
       .insert(conversationMessagesTable)
       .values({
         conversationId: conversation.id,
-        bodyPlaintext: content,
+        body: content,
         role,
         userId: user.id,
         status: "sent",
@@ -109,7 +109,7 @@ async function POST(request: NextRequest, context: RouteContext) {
     
     return apiSuccess({
       id: newMessage.id.toString(),
-      content: newMessage.bodyPlaintext || "",
+      content: newMessage.body || "",
       createdAt: newMessage.createdAt.toISOString(),
       updatedAt: newMessage.updatedAt.toISOString(),
       type,

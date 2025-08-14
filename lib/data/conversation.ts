@@ -44,7 +44,7 @@ export const createConversation = async (
     const conversationValues = {
       ...conversation,
       conversationProvider: "chat" as const,
-      subjectPlaintext: conversation.subject,
+      subject: conversation.subject,
     };
 
     const [newConversation] = await tx.insert(conversationsTable).values(conversationValues).returning();
@@ -104,10 +104,7 @@ export const updateConversation = async (
     dbUpdates.closedAt = new Date();
   }
 
-  // Write to both encrypted and plaintext columns for subject
-  if (dbUpdates.subject !== undefined) {
-    dbUpdates.subjectPlaintext = dbUpdates.subject;
-  }
+  // Subject is now stored directly in the subject column
 
   const updatedConversation = await tx
     .update(conversationsTable)
@@ -436,7 +433,7 @@ export const generateConversationSubject = async (
 
   await db
     .update(conversationsTable)
-    .set({ subject, subjectPlaintext: subject })
+    .set({ subject })
     .where(eq(conversationsTable.id, conversationId));
   return subject;
 };

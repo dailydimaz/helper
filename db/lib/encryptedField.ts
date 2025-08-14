@@ -11,7 +11,18 @@ function getEncryptColumnSecret(): string {
       throw new Error('Encrypted fields cannot be used on the client side');
     }
     const { env } = eval('require')("@/lib/env");
-    encryptColumnSecret = env.ENCRYPT_COLUMN_SECRET;
+    
+    // Use fallback encryption secret for unused encrypted columns
+    if (!env.ENCRYPT_COLUMN_SECRET) {
+      // For development, use a predictable fallback
+      if (process.env.NODE_ENV === 'development') {
+        encryptColumnSecret = 'development-fallback-secret-32-chars';
+      } else {
+        throw new Error('ENCRYPT_COLUMN_SECRET is required for encrypted fields');
+      }
+    } else {
+      encryptColumnSecret = env.ENCRYPT_COLUMN_SECRET;
+    }
   }
   return encryptColumnSecret;
 }

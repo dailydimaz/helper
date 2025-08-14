@@ -1,7 +1,14 @@
 /* eslint-disable no-console */
 import { and, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversationMessages, conversations, gmailSupportEmails, toolApis, tools } from "@/db/schema";
+import { 
+  conversationMessagesTable, 
+  conversationsTable, 
+  gmailSupportEmailsTable, 
+  toolApisTable, 
+  toolsTable 
+} from "@/db/schema";
+import { decryptFieldValue } from "@/db/lib/encryptedField";
 
 const BATCH_SIZE = 1000;
 
@@ -24,56 +31,65 @@ export const migrateEncryptedToPlaintext = async () => {
 
 const migrateConversationMessages = async () => {
   console.log("🔄 Migrating conversation messages...");
-  let lastId = 0;
   let processed = 0;
   let errors = 0;
-  let isFirst = true;
+
+  const batchSize = 50; // Smaller batch size for potentially large text fields
+  let offset = 0;
 
   while (true) {
-    const batch = await db
+    const messagesToMigrate = await db
       .select({
-        id: conversationMessages.id,
-        body: conversationMessages.body,
-        cleanedUpText: conversationMessages.cleanedUpText,
+        id: conversationMessagesTable.id,
+        unused_body: conversationMessagesTable.unused_body,
+        body: conversationMessagesTable.body,
+        unused_cleanedUpText: conversationMessagesTable.unused_cleanedUpText,
+        cleanedUpText: conversationMessagesTable.cleanedUpText,
       })
-      .from(conversationMessages)
+      .from(conversationMessagesTable)
       .where(
         and(
-          gt(conversationMessages.id, lastId),
-          isNotNull(conversationMessages.body), // Has encrypted data
-          isNull(conversationMessages.bodyPlaintext), // Plaintext not populated yet
-        ),
+          or(
+            and(isNotNull(conversationMessagesTable.unused_body), isNull(conversationMessagesTable.body)),
+            and(isNotNull(conversationMessagesTable.unused_cleanedUpText), isNull(conversationMessagesTable.cleanedUpText))
+          )
+        )
       )
-      .orderBy(conversationMessages.id)
-      .limit(isFirst ? 10 : 50);
+      .limit(batchSize)
+      .offset(offset);
 
-    isFirst = false;
+    if (messagesToMigrate.length === 0) break;
 
-    if (batch.length === 0) break;
-
-    try {
-      const bodyConditions = batch.reduce((acc, m) => sql`${acc} WHEN id = ${m.id} THEN ${m.body}`, sql.empty());
-      const cleanedUpTextConditions = batch.reduce(
-        (acc, m) => sql`${acc} WHEN id = ${m.id} THEN ${m.cleanedUpText}`,
-        sql.empty(),
-      );
-
-      await db.execute(sql`
-        UPDATE messages 
-        SET 
-          body = CASE ${bodyConditions} END,
-          cleaned_up_text = CASE ${cleanedUpTextConditions} END
-        WHERE id IN ${batch.map((m) => m.id)}
-      `);
-
-      processed += batch.length;
-    } catch (error) {
-      console.error(`Failed to migrate batch starting at ID ${batch[0]?.id}:`, error);
-      errors += batch.length;
+    for (const message of messagesToMigrate) {
+      try {
+        const updates: Partial<typeof conversationMessagesTable.$inferInsert> = {};
+        
+        // Migrate body if needed
+        if (message.unused_body && !message.body) {
+          updates.body = decryptFieldValue(message.unused_body);
+        }
+        
+        // Migrate cleanedUpText if needed  
+        if (message.unused_cleanedUpText && !message.cleanedUpText) {
+          updates.cleanedUpText = decryptFieldValue(message.unused_cleanedUpText);
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          await db
+            .update(conversationMessagesTable)
+            .set(updates)
+            .where(eq(conversationMessagesTable.id, message.id));
+        }
+        
+        processed++;
+      } catch (error) {
+        console.error(`Failed to migrate message ${message.id}:`, error);
+        errors++;
+      }
     }
 
-    lastId = batch[batch.length - 1]?.id ?? lastId;
-    console.log(`  Migrated ${processed} conversation messages up to ${lastId} (${errors} errors)`);
+    offset += batchSize;
+    console.log(`  Migrated ${processed} conversation messages (${errors} errors)`);
   }
 
   console.log(`✅ Conversation messages migration complete: ${processed} processed, ${errors} errors`);
@@ -81,43 +97,39 @@ const migrateConversationMessages = async () => {
 
 const migrateConversations = async () => {
   console.log("🔄 Migrating conversations...");
-  let lastId = 0;
   let processed = 0;
   let errors = 0;
 
-  while (true) {
-    const batch = await db
-      .select({
-        id: conversations.id,
-        subject: conversations.subject,
-      })
-      .from(conversations)
-      .where(
-        and(gt(conversations.id, lastId), isNotNull(conversations.subject), isNull(conversations.subjectPlaintext)),
+  const conversationsToMigrate = await db
+    .select({
+      id: conversationsTable.id,
+      unused_subject: conversationsTable.unused_subject,
+      subject: conversationsTable.subject,
+    })
+    .from(conversationsTable)
+    .where(
+      and(
+        isNotNull(conversationsTable.unused_subject),
+        isNull(conversationsTable.subject)
       )
-      .orderBy(conversations.id)
-      .limit(100);
+    );
 
-    if (batch.length === 0) break;
-
+  for (const conversation of conversationsToMigrate) {
     try {
-      const subjectConditions = batch.reduce((acc, c) => sql`${acc} WHEN id = ${c.id} THEN ${c.subject}`, sql.empty());
-
-      await db.execute(sql`
-        UPDATE conversations_conversation
-        SET
-          subject = CASE ${subjectConditions} END
-        WHERE id IN ${batch.map((c) => c.id)}
-      `);
-
-      processed += batch.length;
+      if (conversation.unused_subject) {
+        const decryptedSubject = decryptFieldValue(conversation.unused_subject);
+        
+        await db
+          .update(conversationsTable)
+          .set({ subject: decryptedSubject })
+          .where(eq(conversationsTable.id, conversation.id));
+          
+        processed++;
+      }
     } catch (error) {
-      console.error(`Failed to migrate batch starting at ID ${batch[0]?.id}:`, error);
-      errors += batch.length;
+      console.error(`Failed to migrate conversation ${conversation.id}:`, error);
+      errors++;
     }
-
-    lastId = batch[batch.length - 1]?.id ?? lastId;
-    console.log(`  Migrated ${processed} conversations up to ${lastId} (${errors} errors)`);
   }
 
   console.log(`✅ Conversations migration complete: ${processed} processed, ${errors} errors`);
@@ -125,43 +137,39 @@ const migrateConversations = async () => {
 
 const migrateTools = async () => {
   console.log("🔄 Migrating tools...");
-  let lastId = 0;
   let processed = 0;
   let errors = 0;
 
-  while (true) {
-    const batch = await db
-      .select({
-        id: tools.id,
-        authenticationToken: tools.authenticationToken,
-      })
-      .from(tools)
-      .where(
-        and(gt(tools.id, lastId), isNotNull(tools.authenticationToken), isNull(tools.authenticationTokenPlaintext)),
+  const toolsToMigrate = await db
+    .select({
+      id: toolsTable.id,
+      unused_authenticationToken: toolsTable.unused_authenticationToken,
+      authenticationToken: toolsTable.authenticationToken,
+    })
+    .from(toolsTable)
+    .where(
+      and(
+        isNotNull(toolsTable.unused_authenticationToken),
+        isNull(toolsTable.authenticationToken)
       )
-      .orderBy(tools.id)
-      .limit(BATCH_SIZE);
+    );
 
-    if (batch.length === 0) break;
-
-    // Process batch
-    for (const tool of batch) {
-      try {
+  for (const tool of toolsToMigrate) {
+    try {
+      if (tool.unused_authenticationToken) {
+        const decryptedToken = decryptFieldValue(tool.unused_authenticationToken);
+        
         await db
-          .update(tools)
-          .set({
-            authenticationTokenPlaintext: tool.authenticationToken,
-          })
-          .where(eq(tools.id, tool.id));
-      } catch (error) {
-        console.error(`Failed to migrate tool ${tool.id}:`, error);
-        errors++;
+          .update(toolsTable)
+          .set({ authenticationToken: decryptedToken })
+          .where(eq(toolsTable.id, tool.id));
+          
+        processed++;
       }
+    } catch (error) {
+      console.error(`Failed to migrate tool ${tool.id}:`, error);
+      errors++;
     }
-
-    processed += batch.length;
-    lastId = batch[batch.length - 1]?.id ?? lastId;
-    console.log(`  Migrated ${processed} tools (${errors} errors)`);
   }
 
   console.log(`✅ Tools migration complete: ${processed} processed, ${errors} errors`);
@@ -169,47 +177,39 @@ const migrateTools = async () => {
 
 const migrateToolApis = async () => {
   console.log("🔄 Migrating tool APIs...");
-  let lastId = 0;
   let processed = 0;
   let errors = 0;
 
-  while (true) {
-    const batch = await db
-      .select({
-        id: toolApis.id,
-        authenticationToken: toolApis.authenticationToken,
-      })
-      .from(toolApis)
-      .where(
-        and(
-          gt(toolApis.id, lastId),
-          isNotNull(toolApis.authenticationToken), // Has encrypted data
-          isNull(toolApis.authenticationTokenPlaintext), // Plaintext not populated yet
-        ),
+  const toolApisToMigrate = await db
+    .select({
+      id: toolApisTable.id,
+      unused_authenticationToken: toolApisTable.unused_authenticationToken,
+      authenticationToken: toolApisTable.authenticationToken,
+    })
+    .from(toolApisTable)
+    .where(
+      and(
+        isNotNull(toolApisTable.unused_authenticationToken),
+        isNull(toolApisTable.authenticationToken)
       )
-      .orderBy(toolApis.id)
-      .limit(BATCH_SIZE);
+    );
 
-    if (batch.length === 0) break;
-
-    // Process batch
-    for (const toolApi of batch) {
-      try {
+  for (const toolApi of toolApisToMigrate) {
+    try {
+      if (toolApi.unused_authenticationToken) {
+        const decryptedToken = decryptFieldValue(toolApi.unused_authenticationToken);
+        
         await db
-          .update(toolApis)
-          .set({
-            authenticationTokenPlaintext: toolApi.authenticationToken,
-          })
-          .where(eq(toolApis.id, toolApi.id));
-      } catch (error) {
-        console.error(`Failed to migrate tool API ${toolApi.id}:`, error);
-        errors++;
+          .update(toolApisTable)
+          .set({ authenticationToken: decryptedToken })
+          .where(eq(toolApisTable.id, toolApi.id));
+          
+        processed++;
       }
+    } catch (error) {
+      console.error(`Failed to migrate tool API ${toolApi.id}:`, error);
+      errors++;
     }
-
-    processed += batch.length;
-    lastId = batch[batch.length - 1]?.id ?? lastId;
-    console.log(`  Migrated ${processed} tool APIs (${errors} errors)`);
   }
 
   console.log(`✅ Tool APIs migration complete: ${processed} processed, ${errors} errors`);
@@ -217,49 +217,53 @@ const migrateToolApis = async () => {
 
 const migrateGmailSupportEmails = async () => {
   console.log("🔄 Migrating Gmail support emails...");
-  let lastId = 0;
   let processed = 0;
   let errors = 0;
 
-  while (true) {
-    const batch = await db
-      .select({
-        id: gmailSupportEmails.id,
-        accessToken: gmailSupportEmails.accessToken,
-        refreshToken: gmailSupportEmails.refreshToken,
-      })
-      .from(gmailSupportEmails)
-      .where(
-        and(
-          gt(gmailSupportEmails.id, lastId),
-          or(isNotNull(gmailSupportEmails.accessToken), isNotNull(gmailSupportEmails.refreshToken)),
-          or(isNull(gmailSupportEmails.accessTokenPlaintext), isNull(gmailSupportEmails.refreshTokenPlaintext)),
-        ),
+  const emailsToMigrate = await db
+    .select({
+      id: gmailSupportEmailsTable.id,
+      unused_accessToken: gmailSupportEmailsTable.unused_accessToken,
+      accessToken: gmailSupportEmailsTable.accessToken,
+      unused_refreshToken: gmailSupportEmailsTable.unused_refreshToken,
+      refreshToken: gmailSupportEmailsTable.refreshToken,
+    })
+    .from(gmailSupportEmailsTable)
+    .where(
+      and(
+        or(
+          and(isNotNull(gmailSupportEmailsTable.unused_accessToken), isNull(gmailSupportEmailsTable.accessToken)),
+          and(isNotNull(gmailSupportEmailsTable.unused_refreshToken), isNull(gmailSupportEmailsTable.refreshToken))
+        )
       )
-      .orderBy(gmailSupportEmails.id)
-      .limit(BATCH_SIZE);
+    );
 
-    if (batch.length === 0) break;
-
-    // Process batch
-    for (const email of batch) {
-      try {
-        await db
-          .update(gmailSupportEmails)
-          .set({
-            accessTokenPlaintext: email.accessToken,
-            refreshTokenPlaintext: email.refreshToken,
-          })
-          .where(eq(gmailSupportEmails.id, email.id));
-      } catch (error) {
-        console.error(`Failed to migrate Gmail support email ${email.id}:`, error);
-        errors++;
+  for (const email of emailsToMigrate) {
+    try {
+      const updates: Partial<typeof gmailSupportEmailsTable.$inferInsert> = {};
+      
+      // Migrate access token if needed
+      if (email.unused_accessToken && !email.accessToken) {
+        updates.accessToken = decryptFieldValue(email.unused_accessToken);
       }
+      
+      // Migrate refresh token if needed
+      if (email.unused_refreshToken && !email.refreshToken) {
+        updates.refreshToken = decryptFieldValue(email.unused_refreshToken);
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        await db
+          .update(gmailSupportEmailsTable)
+          .set(updates)
+          .where(eq(gmailSupportEmailsTable.id, email.id));
+      }
+      
+      processed++;
+    } catch (error) {
+      console.error(`Failed to migrate Gmail support email ${email.id}:`, error);
+      errors++;
     }
-
-    processed += batch.length;
-    lastId = batch[batch.length - 1]?.id ?? lastId;
-    console.log(`  Migrated ${processed} Gmail support emails (${errors} errors)`);
   }
 
   console.log(`✅ Gmail support emails migration complete: ${processed} processed, ${errors} errors`);
