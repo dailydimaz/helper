@@ -131,8 +131,8 @@ export const ConversationListItem = ({
                       <HumanizedTime time={conversation.closedAt ?? conversation.updatedAt} titlePrefix="Closed on" />
                     ) : (
                       <HumanizedTime
-                        time={conversation.lastUserEmailCreatedAt ?? conversation.updatedAt}
-                        titlePrefix="Last email received on"
+                        time={conversation.lastMessageAt ?? conversation.lastUserEmailCreatedAt ?? conversation.updatedAt}
+                        titlePrefix="Last message on"
                       />
                     )}
                   </div>

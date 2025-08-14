@@ -67,10 +67,12 @@ async function POST(request: NextRequest, context: RouteContext) {
     }
     
     // Update conversation's last activity
+    const now = new Date();
     await db
       .update(conversationsTable)
       .set({ 
-        lastUserEmailCreatedAt: new Date(),
+        lastUserEmailCreatedAt: now,
+        lastMessageAt: now,
         status: "open" // Ensure conversation is open when new message is sent
       })
       .where(eq(conversationsTable.id, conversation.id));

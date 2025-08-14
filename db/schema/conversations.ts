@@ -25,6 +25,7 @@ export const conversationsTable = pgTable(
     slug: randomSlugField("slug"),
     lastUserEmailCreatedAt: timestamp({ withTimezone: true, mode: "date" }),
     lastReadAt: timestamp({ withTimezone: true, mode: "date" }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: "date" }),
     conversationProvider: text().$type<"gmail" | "helpscout" | "chat">(),
     closedAt: timestamp({ withTimezone: true, mode: "date" }),
     assignedToId: text("assigned_to_clerk_id"),
@@ -62,6 +63,7 @@ export const conversationsTable = pgTable(
     // Drizzle doesn't generate migrations with `text_pattern_ops`; they only have `text_ops`
     index("conversations_conversation_email_from_aab3d292_like").on(table.emailFrom),
     index("conversations_conversation_last_user_email_created_at_fc6b89db").on(table.lastUserEmailCreatedAt),
+    index("conversations_conversation_last_message_at_idx").on(table.lastMessageAt.desc().nullsLast()),
     index("conversations_conversation_mailbox_id_7fb25662").on(table.unused_mailboxId),
     // Drizzle doesn't generate migrations with `text_pattern_ops`; they only have `text_ops`
     index("conversations_conversation_slug_9924e9b1_like").on(table.slug),
