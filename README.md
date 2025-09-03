@@ -7,6 +7,8 @@
 
 **This software is derived from the source code for Gumroad, Inc. Helper™ software.**
 
+**This software is currently on halt development; don't expect it to work.**
+
 **High-performance customer support platform** built with modern web technologies for optimal speed, reliability, and maintainability.
 
 > **Trademark Notice**: Helper™ is a trademark of Gumroad, Inc. This derivative software is not officially endorsed or distributed by Gumroad, Inc.
